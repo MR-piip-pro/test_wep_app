@@ -224,3 +224,97 @@ footer {
     padding: 1rem;
   }
 }
+
+/* إضافة تنسيقات جديدة للشبكة */
+.tools-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 2rem;
+  margin-bottom: 2rem;
+}
+
+/* تنسيقات التصفح بين الصفحات */
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+  margin: 2rem 0;
+  padding: 1rem;
+}
+
+.page-btn {
+  background: var(--primary-color);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s, background-color 0.2s;
+}
+
+.page-btn:hover {
+  background: var(--secondary-color);
+  transform: scale(1.1);
+}
+
+.page-info {
+  font-size: 1rem;
+  color: var(--text-color);
+}
+
+/* تحسين أزرار إعادة المحاولة */
+.retry-btn {
+  background: var(--primary-color);
+  color: white;
+  border: none;
+  border-radius: 25px;
+  padding: 0.7rem 1.5rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 1rem auto;
+  transition: background-color 0.2s;
+}
+
+.retry-btn:hover {
+  background: var(--secondary-color);
+}
+
+/* تحسين عرض رسائل الخطأ */
+.error {
+  text-align: center;
+  padding: 2rem;
+}
+
+.error i {
+  font-size: 3rem;
+  color: #dc3545;
+  margin-bottom: 1rem;
+}
+
+.error-details {
+  color: #666;
+  margin: 1rem 0;
+}
+
+/* تحسين عرض حالة عدم وجود أدوات */
+.no-tools {
+  text-align: center;
+  padding: 3rem 1rem;
+}
+
+.no-tools i {
+  font-size: 3rem;
+  color: #666;
+  margin-bottom: 1rem;
+}
+  .tools-container {
+    padding: 1rem;
+  }
+}
