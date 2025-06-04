@@ -128,4 +128,29 @@ categoryFilter.addEventListener('change', filterTools);
 sortFilter.addEventListener('change', filterTools);
 
 // تحميل الأدوات عند تشغيل الصفحة
+import { addDoc, collection, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+// أدوات تجريبية عشوائية
+const sampleTools = [
+  { name: "محرر أكواد أونلاين", link: "https://codepen.io" },
+  { name: "تحويل PDF إلى Word", link: "https://smallpdf.com/pdf-to-word" },
+  { name: "أداة ضغط الصور", link: "https://tinypng.com" },
+  { name: "منشئ رموز QR", link: "https://www.qr-code-generator.com" },
+  { name: "فاحص سرعة الإنترنت", link: "https://fast.com" }
+];
+
+// إضافة الأدوات دفعة واحدة إلى Firestore
+sampleTools.forEach(async tool => {
+  try {
+    await addDoc(collection(db, "tools"), {
+      name: tool.name,
+      link: tool.link,
+      added_at: serverTimestamp()
+    });
+    console.log(`✅ تمت إضافة الأداة: ${tool.name}`);
+  } catch (error) {
+    console.error(`❌ فشل في إضافة ${tool.name}:`, error);
+  }
+});
+
 loadTools();
