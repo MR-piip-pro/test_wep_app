@@ -88,7 +88,7 @@ function renderTools() {
   `;
 
   toolsContainer.innerHTML = `
-    <div class="tools-grid">
+    <div class="tools-grid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 2rem;">
       ${toolsHTML}
     </div>
     ${paginationHTML}
