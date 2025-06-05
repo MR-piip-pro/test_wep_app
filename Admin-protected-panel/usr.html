@@ -2,53 +2,21 @@
 <html lang="ar">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>تسجيل الدخول</title>
-  <style>
-    body {
-      font-family: sans-serif;
-      direction: rtl;
-      background-color: #f9f9f9;
-      text-align: center;
-      padding-top: 50px;
-    }
-    .login-container {
-      background-color: white;
-      display: inline-block;
-      padding: 30px;
-      border-radius: 10px;
-      box-shadow: 0 0 10px #ccc;
-    }
-    input {
-      display: block;
-      margin: 10px auto;
-      padding: 10px;
-      width: 200px;
-    }
-    button {
-      padding: 10px 20px;
-      cursor: pointer;
-    }
-    #login-status {
-      color: red;
-      margin-top: 10px;
-    }
-  </style>
 </head>
 <body>
   <main class="login-container">
     <h1>🔐 تسجيل الدخول</h1>
-    <input type="text" id="username" placeholder="اسم المستخدم" />
-    <input type="password" id="password" placeholder="كلمة السر" />
+    <input type="text" id="username" placeholder="اسم المستخدم">
+    <input type="password" id="password" placeholder="كلمة السر">
     <button onclick="login()">دخول</button>
-    <p id="login-status"></p>
+    <p id="login-status" style="color: red;"></p>
   </main>
 
-  <!-- Firebase -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
     import { getFirestore, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-    import { firebaseConfig } from "./firebase-config.js";
+    import { firebaseConfig } from './firebase-config.js';
 
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
@@ -59,7 +27,7 @@
       const status = document.getElementById("login-status");
 
       if (!usernameInput || !passwordInput) {
-        status.textContent = "يرجى إدخال اسم المستخدم وكلمة السر.";
+        status.textContent = "يرجى تعبئة جميع الحقول.";
         return;
       }
 
@@ -76,13 +44,16 @@
           localStorage.setItem("loggedIn", "true");
           window.location.href = "admin.html";
         } else {
-          status.textContent = "❌ اسم المستخدم أو كلمة المرور غير صحيحة.";
+          status.textContent = "❌ اسم المستخدم أو كلمة السر غير صحيحة.";
         }
       } catch (error) {
-        console.error("خطأ أثناء تسجيل الدخول:", error);
+        console.error("Login error:", error);
         status.textContent = "حدث خطأ أثناء تسجيل الدخول.";
       }
     }
   </script>
+</body>
+</html>
+
 </body>
 </html>
