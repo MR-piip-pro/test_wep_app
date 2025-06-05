@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>لوحة التحكم - الأدوات</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header>
+    <h1>🎛️ لوحة إدارة الأدوات</h1>
+    <p>أضف أدوات جديدة إلى المتجر</p>
+    <p id="user-info">جار التحقق من الصلاحيات...</p>
+    <button onclick="logout()">🔒 تسجيل الخروج</button>
+  </header>
+
+  <main>
+    <section class="form-section">
+      <input type="text" id="tool-name" placeholder="اسم الأداة" />
+      <input type="text" id="tool-link" placeholder="رابط الأداة" />
+      <button onclick="addTool()">➕ إضافة الأداة</button>
+    </section>
+
+    <section id="tools-preview" class="tools-container"></section>
+  </main>
+
+  <footer>
+    <p>حقوق النشر © 2025 - MR-PIIP_PRO</p>
+  </footer>
+
+  <!-- Firebase SDK -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+    import { getFirestore, collection, addDoc, getDocs, serverTimestamp, query, orderBy } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+    import { firebaseConfig } from './firebase-config.js';
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    const userInfo = document.getElementById("user-info");
+
+    onAuthStateChanged(auth, user => {
+      if (!user || user.email !== "ossamapiip000@gmail.com") {
+        alert("🚫 صلاحيات غير كافية، سيتم تحويلك للصفحة الرئيسية.");
+        window.location.href = "index.html";
+      } else {
+        userInfo.textContent = `مرحبًا ${user.displayName}`;
+        loadPreview();
+      }
+    });
+
+    window.logout = function () {
+      signOut(auth).then(() => {
+        alert("تم تسجيل الخروج.");
+        window.location.href = "index.html";
+      });
+    }
+
+    window.addTool = async function () {
+      const name = document.getElementById("tool-name").value.trim();
+      const link = document.getElementById("tool-link").value.trim();
+      if (!name || !link) return alert("يرجى تعبئة جميع الحقول.");
+
+      try {
+        await addDoc(collection(db, "tools"), {
+          name,
+          link,
+          added_at: serverTimestamp()
+        });
+        alert("✅ تمت الإضافة بنجاح");
+        document.getElementById("tool-name").value = "";
+        document.getElementById("tool-link").value = "";
+        loadPreview();
+      } catch (error) {
+        console.error("فشل الإضافة:", error);
+        alert("❌ فشل في الإضافة");
+      }
+    }
+
+    async function loadPreview() {
+      const previewContainer = document.getElementById("tools-preview");
+      previewContainer.innerHTML = "جارٍ التحميل...";
+
+      const q = query(collection(db, "tools"), orderBy("added_at", "desc"));
+      const snapshot = await getDocs(q);
+
+      previewContainer.innerHTML = "";
+      snapshot.forEach(doc => {
+        const tool = doc.data();
+        const div = document.createElement("div");
+        div.className = "tool-card";
+        div.innerHTML = `<h3>${tool.name}</h3><a href="${tool.link}" target="_blank">رابط الأداة</a>`;
+        previewContainer.appendChild(div);
+      });
+    }
+  </script>
+</body>
+</html>
