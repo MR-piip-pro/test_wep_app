@@ -6,6 +6,12 @@
   <title>لوحة التحكم - الأدوات</title>
   <link rel="stylesheet" href="style.css" />
 </head>
+<script>
+  if (localStorage.getItem("loggedIn") !== "true") {
+    window.location.href = "usr.html"; // إعادة التوجيه لصفحة تسجيل الدخول
+  }
+</script>
+
 <body>
   <header>
     <h1>🎛️ لوحة إدارة الأدوات</h1>
@@ -31,31 +37,27 @@
   <!-- Firebase SDK -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
     import { getFirestore, collection, addDoc, getDocs, serverTimestamp, query, orderBy } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
     import { firebaseConfig } from './firebase-config.js';
 
     const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
     const db = getFirestore(app);
 
     const userInfo = document.getElementById("user-info");
 
-    onAuthStateChanged(auth, user => {
-      if (!user || user.email !== "ossamapiip000@gmail.com") {
-        alert("🚫 صلاحيات غير كافية، سيتم تحويلك للصفحة الرئيسية.");
-        window.location.href = "index.html";
-      } else {
-        userInfo.textContent = `مرحبًا ${user.displayName}`;
-        loadPreview();
-      }
-    });
+    const username = localStorage.getItem("username");
+    if (!username || localStorage.getItem("loggedIn") !== "true") {
+      alert("🚫 يرجى تسجيل الدخول أولاً.");
+      window.location.href = "usr.html";
+    } else {
+      userInfo.textContent = `مرحبًا ${username}`;
+      loadPreview();
+    }
 
     window.logout = function () {
-      signOut(auth).then(() => {
-        alert("تم تسجيل الخروج.");
-        window.location.href = "index.html";
-      });
+      localStorage.removeItem("loggedIn");
+      localStorage.removeItem("username");
+      window.location.href = "usr.html";
     }
 
     window.addTool = async function () {
