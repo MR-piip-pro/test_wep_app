@@ -3,8 +3,12 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://www.gstatic.com https://*.firebaseio.com https://*.googleapis.com; style-src 'self' https://cdnjs.cloudflare.com 'unsafe-inline'; script-src 'self' https://www.gstatic.com https://*.firebaseio.com https://*.googleapis.com 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://*.firebaseio.com https://*.googleapis.com wss://*.firebaseio.com; frame-src 'self' https://*.firebaseapp.com;">
+  <meta http-equiv="X-Content-Type-Options" content="nosniff">
+  <meta http-equiv="X-Frame-Options" content="DENY">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
   <title>📦 متجر الأدوات المجانية</title>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -14,8 +18,8 @@
         <h1>📦 متجر الأدوات المجانية</h1>
       </div>
       <div class="search-bar">
-        <input type="text" id="search-input" placeholder="ابحث عن الأدوات...">
-        <button id="search-btn"><i class="fas fa-search"></i></button>
+        <input type="text" id="search-input" placeholder="ابحث عن الأدوات..." maxlength="100" autocomplete="off">
+        <button id="search-btn" type="button" aria-label="بحث"><i class="fas fa-search"></i></button>
       </div>
     </nav>
     <div class="hero-section">
@@ -26,14 +30,14 @@
 
   <main>
     <div class="filters">
-      <select id="category-filter">
+      <select id="category-filter" aria-label="تصفية حسب الفئة">
         <option value="">جميع الفئات</option>
         <option value="development">تطوير</option>
         <option value="design">تصميم</option>
         <option value="productivity">إنتاجية</option>
         <option value="utilities">أدوات مساعدة</option>
       </select>
-      <select id="sort-filter">
+      <select id="sort-filter" aria-label="ترتيب حسب">
         <option value="newest">الأحدث أولاً</option>
         <option value="oldest">الأقدم أولاً</option>
         <option value="name">الترتيب الأبجدي</option>
@@ -46,6 +50,12 @@
         <p>جاري التحميل...</p>
       </div>
     </section>
+
+    <noscript>
+      <div class="error-message">
+        يرجى تفعيل JavaScript لاستخدام هذا التطبيق.
+      </div>
+    </noscript>
   </main>
 
   <footer>
@@ -57,19 +67,22 @@
       <div class="footer-section">
         <h3>تواصل معنا</h3>
         <div class="social-links">
-          <a href="#" target="_blank"><i class="fab fa-twitter"></i></a>
-          <a href="#" target="_blank"><i class="fab fa-github"></i></a>
-          <a href="https://www.instagram.com/" target="_blank"><i class="fab fa-instagram"></i></a>
+          <a href="#" target="_blank" rel="noopener noreferrer" aria-label="Twitter"><i class="fab fa-twitter"></i></a>
+          <a href="#" target="_blank" rel="noopener noreferrer" aria-label="GitHub"><i class="fab fa-github"></i></a>
+          <a href="https://www.instagram.com/" target="_blank" rel="noopener noreferrer" aria-label="Instagram"><i class="fab fa-instagram"></i></a>
         </div>
       </div>
     </div>
     <div class="footer-bottom">
-      <p>حقوق النشر © 2025 - متجر أدوات MR-PIIP_PRO</p>
+      <p>حقوق النشر © <span id="current-year"></span> - متجر أدوات MR-PIIP_PRO</p>
     </div>
   </footer>
 
-  <script type="module" src="seed-data.js"></script>
-  
+  <script>
+    // تحديث السنة تلقائياً
+    document.getElementById('current-year').textContent = new Date().getFullYear();
+  </script>
+  <script type="module" src="config/config.js"></script>
   <script type="module" src="app.js"></script>
 </body>
 </html>
