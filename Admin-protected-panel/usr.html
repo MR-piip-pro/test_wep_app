@@ -4,64 +4,83 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>تسجيل الدخول</title>
-  <link rel="stylesheet" href="style.css">
+  <style>
+    body {
+      font-family: sans-serif;
+      direction: rtl;
+      background-color: #f9f9f9;
+      text-align: center;
+      padding-top: 50px;
+    }
+    .login-container {
+      background-color: white;
+      display: inline-block;
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px #ccc;
+    }
+    input {
+      display: block;
+      margin: 10px auto;
+      padding: 10px;
+      width: 200px;
+    }
+    button {
+      padding: 10px 20px;
+      cursor: pointer;
+    }
+    #login-status {
+      color: red;
+      margin-top: 10px;
+    }
+  </style>
 </head>
 <body>
   <main class="login-container">
     <h1>🔐 تسجيل الدخول</h1>
-    <input type="text" id="username" placeholder="اسم المستخدم">
-    <input type="password" id="password" placeholder="كلمة المرور">
+    <input type="text" id="username" placeholder="اسم المستخدم" />
+    <input type="password" id="password" placeholder="كلمة السر" />
     <button onclick="login()">دخول</button>
     <p id="login-status"></p>
   </main>
 
+  <!-- Firebase -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-    import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-    import { firebaseConfig } from './firebase-config.js';
+    import { getFirestore, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+    import { firebaseConfig } from "./firebase-config.js";
 
-    // تهيئة Firebase
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
-    // دالة تسجيل الدخول
     window.login = async function () {
       const usernameInput = document.getElementById("username").value.trim();
       const passwordInput = document.getElementById("password").value.trim();
       const status = document.getElementById("login-status");
 
       if (!usernameInput || !passwordInput) {
-        status.textContent = "يرجى إدخال اسم المستخدم وكلمة المرور.";
-        status.style.color = "red";
+        status.textContent = "يرجى إدخال اسم المستخدم وكلمة السر.";
         return;
       }
 
       try {
-        const snapshot = await getDocs(collection(db, "usrs"));
-        let found = false;
+        const q = query(
+          collection(db, "users"),
+          where("username", "==", usernameInput),
+          where("password", "==", passwordInput)
+        );
 
-        snapshot.forEach(doc => {
-          const data = doc.data();
-          if (data.username === usernameInput && data.password === passwordInput) {
-            found = true;
-          }
-        });
+        const snapshot = await getDocs(q);
 
-        if (found) {
+        if (!snapshot.empty) {
           localStorage.setItem("loggedIn", "true");
-          status.textContent = "✅ تم تسجيل الدخول بنجاح، جاري التوجيه...";
-          status.style.color = "green";
-          setTimeout(() => {
-            window.location.href = "admin.html";
-          }, 1000);
+          window.location.href = "admin.html";
         } else {
           status.textContent = "❌ اسم المستخدم أو كلمة المرور غير صحيحة.";
-          status.style.color = "red";
         }
       } catch (error) {
-        console.error("حدث خطأ:", error);
+        console.error("خطأ أثناء تسجيل الدخول:", error);
         status.textContent = "حدث خطأ أثناء تسجيل الدخول.";
-        status.style.color = "red";
       }
     }
   </script>
