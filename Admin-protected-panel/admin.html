@@ -117,19 +117,23 @@
 
       previewContainer.innerHTML = "";
       snapshot.forEach(docSnap => {
-        const tool = docSnap.data();
-        const id = docSnap.id;
+  const tool = docSnap.data();
+  const id = docSnap.id;
 
-        const div = document.createElement("div");
-        div.className = "tool-card";
-        div.innerHTML = `
-          <h3>${tool.name}</h3>
-          <a href="${tool.link}" target="_blank">رابط الأداة</a><br/>
-          <button onclick="editTool('${id}', '${tool.name}', '${tool.link}')">✏️ تعديل</button>
-          <button onclick="deleteTool('${id}')">🗑️ حذف</button>
-        `;
-        previewContainer.appendChild(div);
-      });
+  const safeName = encodeURIComponent(tool.name);
+  const safeLink = encodeURIComponent(tool.link);
+
+  const div = document.createElement("div");
+  div.className = "tool-card";
+  div.innerHTML = `
+    <h3>${tool.name}</h3>
+    <a href="${tool.link}" target="_blank">رابط الأداة</a><br/>
+    <button onclick="editTool('${id}', decodeURIComponent('${safeName}'), decodeURIComponent('${safeLink}'))">✏️ تعديل</button>
+    <button onclick="deleteTool('${id}')">🗑️ حذف</button>
+  `;
+  previewContainer.appendChild(div);
+});
+
     }
   </script>
 </body>
