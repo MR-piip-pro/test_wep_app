@@ -6,17 +6,17 @@
   <title>لوحة التحكم - الأدوات</title>
   <link rel="stylesheet" href="style.css" />
 </head>
-<script>
-  if (localStorage.getItem("loggedIn") !== "true") {
-    window.location.href = "usr.html"; // إعادة التوجيه لصفحة تسجيل الدخول
-  }
-</script>
 
 <body>
+  <script>
+    if (localStorage.getItem("loggedIn") !== "true") {
+      window.location.href = "usr.html";
+    }
+  </script>
+
   <header>
     <h1>🎛️ لوحة إدارة الأدوات</h1>
     <p>أضف أدوات جديدة إلى المتجر</p>
-    <p id="user-info">جار التحقق من الصلاحيات...</p>
     <button onclick="logout()">🔒 تسجيل الخروج</button>
   </header>
 
@@ -43,22 +43,10 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
-    const userInfo = document.getElementById("user-info");
-
-    const username = localStorage.getItem("username");
-    if (!username || localStorage.getItem("loggedIn") !== "true") {
-      alert("🚫 يرجى تسجيل الدخول أولاً.");
-      window.location.href = "usr.html";
-    } else {
-      userInfo.textContent = `مرحبًا ${username}`;
-      loadPreview();
-    }
-
     window.logout = function () {
       localStorage.removeItem("loggedIn");
-      localStorage.removeItem("username");
       window.location.href = "usr.html";
-    }
+    };
 
     window.addTool = async function () {
       const name = document.getElementById("tool-name").value.trim();
@@ -71,32 +59,33 @@
           link,
           added_at: serverTimestamp()
         });
-        alert("✅ تمت الإضافة بنجاح");
+        alert("✅ تمت إضافة الأداة بنجاح");
         document.getElementById("tool-name").value = "";
         document.getElementById("tool-link").value = "";
         loadPreview();
-      } catch (error) {
-        console.error("فشل الإضافة:", error);
-        alert("❌ فشل في الإضافة");
+      } catch (e) {
+        console.error("خطأ في الإضافة:", e);
+        alert("❌ فشل في إضافة الأداة");
       }
-    }
+    };
 
     async function loadPreview() {
-      const previewContainer = document.getElementById("tools-preview");
-      previewContainer.innerHTML = "جارٍ التحميل...";
-
+      const container = document.getElementById("tools-preview");
+      container.innerHTML = "⏳ تحميل الأدوات...";
       const q = query(collection(db, "tools"), orderBy("added_at", "desc"));
       const snapshot = await getDocs(q);
+      container.innerHTML = "";
 
-      previewContainer.innerHTML = "";
       snapshot.forEach(doc => {
         const tool = doc.data();
-        const div = document.createElement("div");
-        div.className = "tool-card";
-        div.innerHTML = `<h3>${tool.name}</h3><a href="${tool.link}" target="_blank">رابط الأداة</a>`;
-        previewContainer.appendChild(div);
+        const card = document.createElement("div");
+        card.className = "tool-card";
+        card.innerHTML = `<h3>${tool.name}</h3><a href="${tool.link}" target="_blank">رابط الأداة</a>`;
+        container.appendChild(card);
       });
     }
+
+    loadPreview();
   </script>
 </body>
 </html>
