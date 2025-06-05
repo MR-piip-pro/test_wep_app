@@ -16,9 +16,19 @@ import {
 import { firebaseConfig } from './config/config.js';
 
 // تهيئة Firebase
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-const auth = getAuth(app);
+try {
+  console.log('بدء تهيئة Firebase...');
+  const app = initializeApp(firebaseConfig);
+  console.log('تم تهيئة Firebase بنجاح');
+  
+  const db = getFirestore(app);
+  const auth = getAuth(app);
+  
+  console.log('تم تهيئة Firestore و Auth بنجاح');
+} catch (error) {
+  console.error('خطأ في تهيئة Firebase:', error);
+  showError('خطأ في تهيئة التطبيق');
+}
 
 // العناصر في DOM
 const toolsContainer = document.getElementById("tools-container");
@@ -37,19 +47,28 @@ let currentUser = null;
 
 // التحقق من حالة المصادقة
 onAuthStateChanged(auth, (user) => {
+  console.log('تغيير حالة المصادقة:', user ? 'مسجل الدخول' : 'غير مسجل الدخول');
   currentUser = user;
   if (!user) {
-    // تسجيل الدخول كمستخدم مجهول إذا لم يكن هناك مستخدم
-    signInAnonymously(auth).catch(error => {
-      console.error("خطأ في المصادقة:", error);
-    });
+    console.log('محاولة تسجيل الدخول كمستخدم مجهول...');
+    signInAnonymously(auth)
+      .then(() => {
+        console.log('تم تسجيل الدخول كمستخدم مجهول بنجاح');
+        loadTools(); // إعادة تحميل الأدوات بعد تسجيل الدخول
+      })
+      .catch(error => {
+        console.error("خطأ في المصادقة:", error);
+        showError('خطأ في تسجيل الدخول');
+      });
+  } else {
+    loadTools(); // تحميل الأدوات إذا كان المستخدم مسجل الدخول
   }
 });
 
 // دالة مساعدة للتحقق من صحة المدخلات
 function sanitizeInput(input) {
   if (typeof input !== 'string') return '';
-  return input.replace(/[<>]/g, ''); // منع XSS
+  return input.replace(/[<>]/g, '');
 }
 
 // دالة مساعدة للتحقق من صحة معرف المستند
@@ -65,22 +84,28 @@ async function loadTools() {
   showLoading();
 
   try {
+    console.log('بدء تحميل الأدوات...');
+    
     // التحقق من وجود مستخدم
     if (!currentUser) {
       throw new Error("يجب تسجيل الدخول لعرض الأدوات");
     }
 
     const toolsRef = collection(db, "tools");
+    console.log('تم إنشاء مرجع المجموعة');
+
     const toolsQuery = query(
       toolsRef,
-      where("isPublic", "==", true), // عرض الأدوات العامة فقط
       orderBy("added_at", "desc"),
-      limit(50) // تحديد عدد النتائج
+      limit(50)
     );
+    console.log('تم إنشاء الاستعلام');
 
     const snapshot = await getDocs(toolsQuery);
+    console.log('تم استلام البيانات:', snapshot.size, 'أداة');
 
     if (snapshot.empty) {
+      console.log('لا توجد أدوات في قاعدة البيانات');
       showNoTools();
       return;
     }
@@ -88,11 +113,13 @@ async function loadTools() {
     allTools = snapshot.docs
       .map(doc => {
         const data = doc.data();
-        // التحقق من صحة البيانات
+        console.log('معالجة الأداة:', doc.id);
+        
         if (!isValidDocId(doc.id) || !data.name) {
           console.warn("تم تخطي أداة غير صالحة:", doc.id);
           return null;
         }
+        
         return {
           id: doc.id,
           name: sanitizeInput(data.name),
@@ -103,12 +130,14 @@ async function loadTools() {
           added_at: data.added_at || new Date().getTime()
         };
       })
-      .filter(tool => tool !== null); // إزالة الأدوات غير الصالحة
+      .filter(tool => tool !== null);
 
+    console.log('تم معالجة', allTools.length, 'أداة بنجاح');
+    
     filteredTools = [...allTools];
     renderTools();
   } catch (error) {
-    console.error("حدث خطأ أثناء تحميل الأدوات:", error);
+    console.error("خطأ أثناء تحميل الأدوات:", error);
     showError(error.message);
   } finally {
     isLoading = false;
@@ -117,20 +146,26 @@ async function loadTools() {
 
 // عرض الأدوات مع تحسينات الأمان
 function renderTools() {
+  console.log('بدء عرض الأدوات...');
+  
   if (!Array.isArray(filteredTools) || filteredTools.length === 0) {
+    console.log('لا توجد أدوات للعرض');
     showNoTools();
     return;
   }
 
   try {
-    // حساب الأدوات التي سيتم عرضها في الصفحة الحالية
     const startIndex = (currentPage - 1) * itemsPerPage;
     const endIndex = Math.min(startIndex + itemsPerPage, filteredTools.length);
     const currentTools = filteredTools.slice(startIndex, endIndex);
+    
+    console.log('عرض الأدوات من', startIndex + 1, 'إلى', endIndex);
 
     const toolsHTML = currentTools.map(tool => {
-      // التحقق من صحة البيانات مرة أخرى قبل العرض
-      if (!tool || !tool.name) return '';
+      if (!tool || !tool.name) {
+        console.warn('تم تخطي أداة غير صالحة أثناء العرض');
+        return '';
+      }
       
       return `
         <div class="tool-card" data-tool-id="${tool.id}">
@@ -149,8 +184,9 @@ function renderTools() {
       `;
     }).join('');
 
-    // إضافة أزرار التنقل بين الصفحات
     const totalPages = Math.ceil(filteredTools.length / itemsPerPage);
+    console.log('إجمالي الصفحات:', totalPages);
+
     const paginationHTML = `
       <div class="pagination">
         ${currentPage > 1 ? `<button onclick="changePage(${currentPage - 1})" class="page-btn"><i class="fas fa-chevron-right"></i></button>` : ''}
@@ -165,6 +201,8 @@ function renderTools() {
       </div>
       ${paginationHTML}
     `;
+    
+    console.log('تم عرض الأدوات بنجاح');
   } catch (error) {
     console.error("خطأ في عرض الأدوات:", error);
     showError("حدث خطأ أثناء عرض الأدوات");
