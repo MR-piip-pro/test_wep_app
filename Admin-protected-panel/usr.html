@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+  <meta charset="UTF-8">
+  <title>تسجيل الدخول</title>
+  <style>
+    body { font-family: Arial; text-align: center; padding: 50px; }
+    input { margin: 5px; padding: 10px; width: 200px; }
+    button { padding: 10px 20px; }
+  </style>
+</head>
+<body>
+  <h2>تسجيل الدخول</h2>
+  <input id="username" type="text" placeholder="اسم المستخدم" />
+  <input id="password" type="password" placeholder="كلمة السر" />
+  <br>
+  <button onclick="login()">دخول</button>
+  <p id="message" style="color: red;"></p>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+    import { firebaseConfig } from './firebase-config.js';
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    async function login() {
+      const username = document.getElementById("username").value.trim();
+      const password = document.getElementById("password").value.trim();
+      const msg = document.getElementById("message");
+
+      const snapshot = await getDocs(collection(db, "users"));
+      let found = false;
+
+      snapshot.forEach(doc => {
+        const user = doc.data();
+        if (user.username === username && user.password === password) {
+          found = true;
+        }
+      });
+
+      if (found) {
+        // حفظ الدخول في localStorage
+        localStorage.setItem("loggedIn", "true");
+        window.location.href = "admin.html";
+      } else {
+        msg.textContent = "❌ اسم المستخدم أو كلمة السر غير صحيحة";
+      }
+    }
+  </script>
+</body>
+</html>
