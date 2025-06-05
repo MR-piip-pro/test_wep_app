@@ -13,45 +13,49 @@
     <p id="login-status" style="color: red;"></p>
   </main>
 
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-    import { getFirestore, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-    import { firebaseConfig } from './firebase-config.js';
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getFirestore, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+  import { firebaseConfig } from './firebase-config.js';
 
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
 
-    window.login = async function () {
-      const usernameInput = document.getElementById("username").value.trim();
-      const passwordInput = document.getElementById("password").value.trim();
-      const status = document.getElementById("login-status");
+  window.login = async function () {
+    const usernameInput = document.getElementById("username").value.trim();
+    const passwordInput = document.getElementById("password").value.trim();
+    const status = document.getElementById("login-status");
 
-      if (!usernameInput || !passwordInput) {
-        status.textContent = "يرجى تعبئة جميع الحقول.";
-        return;
-      }
-
-      try {
-        const q = query(
-          collection(db, "users"),
-          where("username", "==", usernameInput),
-          where("password", "==", passwordInput)
-        );
-
-        const snapshot = await getDocs(q);
-
-        if (!snapshot.empty) {
-          localStorage.setItem("loggedIn", "true");
-          window.location.href = "admin.html";
-        } else {
-          status.textContent = "❌ اسم المستخدم أو كلمة السر غير صحيحة.";
-        }
-      } catch (error) {
-        console.error("Login error:", error);
-        status.textContent = "حدث خطأ أثناء تسجيل الدخول.";
-      }
+    if (!usernameInput || !passwordInput) {
+      status.textContent = "يرجى تعبئة اسم المستخدم وكلمة المرور.";
+      return;
     }
-  </script>
+
+    try {
+      const q = query(
+        collection(db, "users"),
+        where("username", "==", usernameInput),
+        where("password", "==", passwordInput)
+      );
+
+      const snapshot = await getDocs(q);
+
+      if (!snapshot.empty) {
+        // نجاح الدخول
+        localStorage.setItem("loggedIn", "true");
+        window.location.href = "admin.html";
+      } else {
+        // فشل التحقق
+        status.textContent = "❌ اسم المستخدم أو كلمة المرور غير صحيحة.";
+      }
+
+    } catch (error) {
+      console.error("خطأ أثناء التحقق:", error);
+      status.textContent = "⚠️ حدث خطأ أثناء تسجيل الدخول.";
+    }
+  }
+</script>
+
 </body>
 </html>
 
