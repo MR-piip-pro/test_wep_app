@@ -1,59 +1,67 @@
 <!DOCTYPE html>
 <html lang="ar">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>تسجيل الدخول</title>
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <main class="login-form">
-    <h2>🔐 تسجيل الدخول إلى لوحة التحكم</h2>
-    <input type="text" id="username" placeholder="اسم المستخدم" />
-    <input type="password" id="password" placeholder="كلمة السر" />
+  <main class="login-container">
+    <h1>🔐 تسجيل الدخول</h1>
+    <input type="text" id="username" placeholder="اسم المستخدم">
+    <input type="password" id="password" placeholder="كلمة المرور">
     <button onclick="login()">دخول</button>
-    <p id="error-message" style="color: red;"></p>
+    <p id="login-status"></p>
   </main>
 
-  <!-- Firebase SDK -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
     import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
     import { firebaseConfig } from './firebase-config.js';
 
+    // تهيئة Firebase
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
+    // دالة تسجيل الدخول
     window.login = async function () {
-      const username = document.getElementById("username").value.trim();
-      const password = document.getElementById("password").value.trim();
-      const errorMsg = document.getElementById("error-message");
+      const usernameInput = document.getElementById("username").value.trim();
+      const passwordInput = document.getElementById("password").value.trim();
+      const status = document.getElementById("login-status");
 
-      if (!username || !password) {
-        errorMsg.textContent = "⚠️ الرجاء تعبئة جميع الحقول.";
+      if (!usernameInput || !passwordInput) {
+        status.textContent = "يرجى إدخال اسم المستخدم وكلمة المرور.";
+        status.style.color = "red";
         return;
       }
 
       try {
         const snapshot = await getDocs(collection(db, "usrs"));
-        let valid = false;
+        let found = false;
 
         snapshot.forEach(doc => {
           const data = doc.data();
-          if (data.username === username && data.password === password) {
-            valid = true;
+          if (data.username === usernameInput && data.password === passwordInput) {
+            found = true;
           }
         });
 
-        if (valid) {
+        if (found) {
           localStorage.setItem("loggedIn", "true");
-          window.location.href = "admin.html";
+          status.textContent = "✅ تم تسجيل الدخول بنجاح، جاري التوجيه...";
+          status.style.color = "green";
+          setTimeout(() => {
+            window.location.href = "admin.html";
+          }, 1000);
         } else {
-          errorMsg.textContent = "❌ اسم المستخدم أو كلمة المرور غير صحيحة.";
+          status.textContent = "❌ اسم المستخدم أو كلمة المرور غير صحيحة.";
+          status.style.color = "red";
         }
       } catch (error) {
-        console.error("خطأ أثناء تسجيل الدخول:", error);
-        errorMsg.textContent = "⚠️ حدث خطأ، حاول مرة أخرى.";
+        console.error("حدث خطأ:", error);
+        status.textContent = "حدث خطأ أثناء تسجيل الدخول.";
+        status.style.color = "red";
       }
     }
   </script>
