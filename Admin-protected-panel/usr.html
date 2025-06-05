@@ -1,63 +1,52 @@
 <!DOCTYPE html>
 <html lang="ar">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>تسجيل الدخول</title>
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <main class="login-container">
-    <h1>🔐 تسجيل الدخول</h1>
-    <input type="text" id="username" placeholder="اسم المستخدم">
-    <input type="password" id="password" placeholder="كلمة السر">
+  <main>
+    <h1>🔐 تسجيل الدخول إلى لوحة الإدارة</h1>
+    <input type="email" id="email" placeholder="البريد الإلكتروني" />
+    <input type="password" id="password" placeholder="كلمة المرور" />
     <button onclick="login()">دخول</button>
-    <p id="login-status" style="color: red;"></p>
+    <p id="error" style="color: red;"></p>
   </main>
 
-<script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-  import { getFirestore, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-  import { firebaseConfig } from './firebase-config.js';
+  <!-- Firebase SDK -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+    import { firebaseConfig } from './firebase-config.js';
 
-  const app = initializeApp(firebaseConfig);
-  const db = getFirestore(app);
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
 
-  window.login = async function () {
-    const usernameInput = document.getElementById("username").value.trim();
-    const passwordInput = document.getElementById("password").value.trim();
-    const status = document.getElementById("login-status");
+    window.login = async function () {
+      const email = document.getElementById("email").value.trim();
+      const password = document.getElementById("password").value.trim();
+      const errorMsg = document.getElementById("error");
+      errorMsg.textContent = "";
 
-    if (!usernameInput || !passwordInput) {
-      status.textContent = "يرجى تعبئة اسم المستخدم وكلمة المرور.";
-      return;
-    }
-
-    try {
-      const q = query(
-        collection(db, "users"),
-        where("username", "==", usernameInput),
-        where("password", "==", passwordInput)
-      );
-
-      const snapshot = await getDocs(q);
-
-      if (!snapshot.empty) {
-        // نجاح الدخول
-        localStorage.setItem("loggedIn", "true");
-        window.location.href = "admin.html";
-      } else {
-        // فشل التحقق
-        status.textContent = "❌ اسم المستخدم أو كلمة المرور غير صحيحة.";
+      if (!email || !password) {
+        errorMsg.textContent = "يرجى إدخال البريد وكلمة المرور";
+        return;
       }
 
-    } catch (error) {
-      console.error("خطأ أثناء التحقق:", error);
-      status.textContent = "⚠️ حدث خطأ أثناء تسجيل الدخول.";
+      try {
+        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        const user = userCredential.user;
+
+        // تسجيل الدخول ناجح
+        localStorage.setItem("loggedIn", "true");
+        window.location.href = "admin.html";
+      } catch (error) {
+        console.error(error);
+        errorMsg.textContent = "❌ البريد الإلكتروني أو كلمة المرور غير صحيحة";
+      }
     }
-  }
-</script>
-
-</body>
-</html>
-
+  </script>
 </body>
 </html>
