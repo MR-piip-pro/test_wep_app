@@ -113,6 +113,9 @@ header {
   box-shadow: var(--shadow);
   transition: transform 0.2s;
   text-align: right;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 }
 
 .tool-card:hover {
@@ -128,6 +131,7 @@ header {
 .tool-card p {
   margin-bottom: 1rem;
   color: #666;
+  flex-grow: 1;
 }
 
 .tool-card .tags {
@@ -152,6 +156,7 @@ header {
   border-radius: 25px;
   text-decoration: none;
   transition: background-color 0.2s;
+  text-align: center;
 }
 
 .tool-card a:hover {
