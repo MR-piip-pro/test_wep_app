@@ -9,6 +9,7 @@
 
 <body>
   <script>
+    // تحقق من تسجيل الدخول
     if (localStorage.getItem("loggedIn") !== "true") {
       window.location.href = "usr.html";
     }
@@ -34,7 +35,7 @@
     <p>حقوق النشر © 2025 - MR-PIIP_PRO</p>
   </footer>
 
-  <!-- Firebase SDK -->
+  <!-- Firebase -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
     import { getFirestore, collection, addDoc, getDocs, serverTimestamp, query, orderBy } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
@@ -43,11 +44,13 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
+    // زر تسجيل الخروج
     window.logout = function () {
       localStorage.removeItem("loggedIn");
       window.location.href = "usr.html";
-    };
+    }
 
+    // إضافة أداة جديدة
     window.addTool = async function () {
       const name = document.getElementById("tool-name").value.trim();
       const link = document.getElementById("tool-link").value.trim();
@@ -59,32 +62,35 @@
           link,
           added_at: serverTimestamp()
         });
-        alert("✅ تمت إضافة الأداة بنجاح");
+        alert("✅ تمت الإضافة بنجاح");
         document.getElementById("tool-name").value = "";
         document.getElementById("tool-link").value = "";
         loadPreview();
-      } catch (e) {
-        console.error("خطأ في الإضافة:", e);
-        alert("❌ فشل في إضافة الأداة");
+      } catch (error) {
+        console.error("فشل الإضافة:", error);
+        alert("❌ فشل في الإضافة");
       }
-    };
+    }
 
+    // عرض الأدوات الحالية
     async function loadPreview() {
-      const container = document.getElementById("tools-preview");
-      container.innerHTML = "⏳ تحميل الأدوات...";
+      const previewContainer = document.getElementById("tools-preview");
+      previewContainer.innerHTML = "جارٍ التحميل...";
+
       const q = query(collection(db, "tools"), orderBy("added_at", "desc"));
       const snapshot = await getDocs(q);
-      container.innerHTML = "";
 
+      previewContainer.innerHTML = "";
       snapshot.forEach(doc => {
         const tool = doc.data();
-        const card = document.createElement("div");
-        card.className = "tool-card";
-        card.innerHTML = `<h3>${tool.name}</h3><a href="${tool.link}" target="_blank">رابط الأداة</a>`;
-        container.appendChild(card);
+        const div = document.createElement("div");
+        div.className = "tool-card";
+        div.innerHTML = `<h3>${tool.name}</h3><a href="${tool.link}" target="_blank">رابط الأداة</a>`;
+        previewContainer.appendChild(div);
       });
     }
 
+    // تحميل الأدوات عند فتح الصفحة
     loadPreview();
   </script>
 </body>
