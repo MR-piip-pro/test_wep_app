@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ar">
+<html lang="ar" dir="rtl">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -12,7 +12,7 @@
 <body>
   <main>
     <h1>🔐 تسجيل الدخول إلى لوحة الإدارة</h1>
-    <form id="login-form" onsubmit="handleLogin(event)">
+    <form id="login-form" method="POST" onsubmit="handleLogin(event)">
       <input 
         type="email" 
         id="email" 
@@ -21,6 +21,7 @@
         required 
         pattern="[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
         autocomplete="email"
+        dir="ltr"
       />
       <input 
         type="password" 
@@ -30,6 +31,7 @@
         required 
         minlength="6"
         autocomplete="current-password"
+        dir="ltr"
       />
       <button type="submit" id="login-btn">تسجيل الدخول</button>
       <p id="error" class="error-message"></p>
@@ -55,7 +57,8 @@
     onAuthStateChanged(auth, user => {
       if (user) {
         console.log('User is signed in:', user.email);
-        window.location.href = "admin.html";
+        // تأكد من أن المسار نسبي
+        window.location.replace("admin.html");
       }
     });
 
@@ -79,8 +82,9 @@
     window.handleLogin = async function(event) {
       event.preventDefault();
       
-      const email = loginForm.email.value.trim();
-      const password = loginForm.password.value;
+      const formData = new FormData(loginForm);
+      const email = formData.get('email').trim();
+      const password = formData.get('password');
 
       // التحقق من المدخلات
       if (!email || !password) {
@@ -124,6 +128,11 @@
         toggleFormState(false);
       }
     };
+
+    // منع ظهور البيانات في الـ URL
+    if (window.location.search) {
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
   </script>
 </body>
 </html>
