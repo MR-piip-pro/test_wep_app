@@ -52,22 +52,28 @@ class AuthService {
             const userCredential = await signInWithEmailAndPassword(auth, email, password);
             const user = userCredential.user;
 
+            // التحقق من وجود وثيقة التكوين
+            const systemConfigDoc = await getDoc(doc(db, AUTH_CONFIG.FIREBASE_COLLECTIONS.SYSTEM, 'config'));
+            const isFirstUser = !systemConfigDoc.exists();
+
+            if (isFirstUser) {
+                console.log('Creating first admin user...');
+                await this._createFirstAdmin(user);
+                return {
+                    user,
+                    isAdmin: true
+                };
+            }
+
             // التحقق من وجود المستخدم في Firestore
-            const userDoc = await getDoc(doc(db, AUTH_CONFIG.FIREBASE_COLLECTIONS.USERS, user.uid));
-            
+            const [userDoc, adminDoc] = await Promise.all([
+                getDoc(doc(db, AUTH_CONFIG.FIREBASE_COLLECTIONS.USERS, user.uid)),
+                getDoc(doc(db, AUTH_CONFIG.FIREBASE_COLLECTIONS.ADMINS, user.uid))
+            ]);
+
+            // إذا لم يكن المستخدم موجوداً في النظام
             if (!userDoc.exists()) {
-                // إذا كان هذا أول مستخدم، قم بإنشاء حساب مسؤول
-                const isFirstUser = !(await getDoc(doc(db, AUTH_CONFIG.FIREBASE_COLLECTIONS.SYSTEM, 'config'))).exists();
-                
-                if (isFirstUser) {
-                    await this._createFirstAdmin(user);
-                    return {
-                        user,
-                        isAdmin: true
-                    };
-                }
-                
-                // إذا لم يكن المستخدم موجوداً في النظام
+                console.log('User document not found');
                 await this.logout();
                 throw new Error(AUTH_CONFIG.ERROR_MESSAGES.USER_NOT_FOUND);
             }
@@ -75,15 +81,23 @@ class AuthService {
             // التحقق من أن الحساب غير معطل
             const userData = userDoc.data();
             if (userData.disabled) {
+                console.log('User account is disabled');
                 await this.logout();
                 throw new Error(AUTH_CONFIG.ERROR_MESSAGES.ACCOUNT_DISABLED);
             }
 
             // التحقق من صلاحيات المسؤول
-            const isAdmin = await this._checkAdminStatus(user);
-            if (!isAdmin) {
+            if (!adminDoc.exists()) {
+                console.log('Admin document not found');
                 await this.logout();
                 throw new Error(AUTH_CONFIG.ERROR_MESSAGES.NOT_ADMIN);
+            }
+
+            const adminData = adminDoc.data();
+            if (adminData.disabled) {
+                console.log('Admin account is disabled');
+                await this.logout();
+                throw new Error(AUTH_CONFIG.ERROR_MESSAGES.ACCOUNT_DISABLED);
             }
 
             // تحديث معلومات آخر تسجيل دخول
@@ -91,7 +105,7 @@ class AuthService {
 
             return {
                 user,
-                isAdmin
+                isAdmin: true
             };
         } catch (error) {
             console.error('Login error:', error);
@@ -139,15 +153,19 @@ class AuthService {
 
     // إنشاء أول مسؤول في النظام
     async _createFirstAdmin(user) {
-        try {
-            const batch = db.batch();
+        const batch = db.batch();
+        console.log('Starting first admin creation process...');
 
+        try {
             // إنشاء وثيقة تكوين النظام
             const systemRef = doc(db, AUTH_CONFIG.FIREBASE_COLLECTIONS.SYSTEM, 'config');
+            const timestamp = serverTimestamp();
+
             batch.set(systemRef, {
                 firstAdminEmail: user.email,
-                createdAt: serverTimestamp(),
-                systemVersion: '1.0.0'
+                createdAt: timestamp,
+                systemVersion: '1.0.0',
+                lastUpdated: timestamp
             });
 
             // إنشاء وثيقة المسؤول
@@ -155,8 +173,8 @@ class AuthService {
             batch.set(adminRef, {
                 email: user.email.toLowerCase(),
                 displayName: user.displayName || 'المسؤول الرئيسي',
-                createdAt: serverTimestamp(),
-                lastLoginAt: serverTimestamp(),
+                createdAt: timestamp,
+                lastLoginAt: timestamp,
                 isFirstAdmin: true,
                 role: 'superadmin',
                 permissions: ['*'],
@@ -168,18 +186,20 @@ class AuthService {
             batch.set(userRef, {
                 email: user.email.toLowerCase(),
                 displayName: user.displayName || 'المسؤول الرئيسي',
-                createdAt: serverTimestamp(),
-                lastLoginAt: serverTimestamp(),
+                createdAt: timestamp,
+                lastLoginAt: timestamp,
                 role: 'admin',
                 disabled: false
             });
 
-            // تنفيذ جميع العمليات معاً
+            console.log('Committing batch operation...');
             await batch.commit();
+            console.log('First admin created successfully');
+            
             return true;
         } catch (error) {
             console.error('Error creating first admin:', error);
-            throw error;
+            throw new Error('فشل في إنشاء حساب المسؤول الأول');
         }
     }
 
