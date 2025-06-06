@@ -12,16 +12,15 @@
 <body>
   <main>
     <h1>🔐 تسجيل الدخول إلى لوحة الإدارة</h1>
-    <form id="login-form" method="POST" onsubmit="handleLogin(event)">
+    <form id="login-form" onsubmit="handleLogin(event)">
       <input 
         type="email" 
         id="email" 
         name="email"
         placeholder="البريد الإلكتروني" 
         required 
-        pattern="[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
-        autocomplete="email"
         dir="ltr"
+        value="ossamapiip000@gmail.com"
       />
       <input 
         type="password" 
@@ -29,8 +28,6 @@
         name="password"
         placeholder="كلمة المرور" 
         required 
-        minlength="6"
-        autocomplete="current-password"
         dir="ltr"
       />
       <button type="submit" id="login-btn">تسجيل الدخول</button>
@@ -40,98 +37,111 @@
 
   <!-- Firebase SDK -->
   <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-    import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-    import { firebaseConfig } from './firebase-config.js';
-
-    // تهيئة Firebase
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    
-    // عناصر الواجهة
-    const loginForm = document.getElementById('login-form');
-    const loginBtn = document.getElementById('login-btn');
-    const errorElement = document.getElementById('error');
-
-    // التحقق من حالة تسجيل الدخول
-    onAuthStateChanged(auth, user => {
-      if (user) {
-        console.log('User is signed in:', user.email);
-        // تأكد من أن المسار نسبي
-        window.location.replace("admin.html");
-      }
-    });
-
-    // إظهار رسالة الخطأ
-    function showError(message) {
-      errorElement.textContent = message;
-      errorElement.style.display = message ? 'block' : 'none';
-    }
-
-    // تغيير حالة النموذج
-    function toggleFormState(disabled) {
-      loginBtn.disabled = disabled;
-      loginBtn.classList.toggle('loading', disabled);
-      const inputs = loginForm.getElementsByTagName('input');
-      for (let input of inputs) {
-        input.disabled = disabled;
-      }
-    }
-
-    // معالجة تسجيل الدخول
-    window.handleLogin = async function(event) {
-      event.preventDefault();
-      
-      const formData = new FormData(loginForm);
-      const email = formData.get('email').trim();
-      const password = formData.get('password');
-
-      // التحقق من المدخلات
-      if (!email || !password) {
-        showError('يرجى إدخال البريد الإلكتروني وكلمة المرور');
-        return;
-      }
-
-      // تعطيل النموذج أثناء المعالجة
-      toggleFormState(true);
-      showError('');
-
-      try {
-        const userCredential = await signInWithEmailAndPassword(auth, email, password);
-        console.log('Login successful:', userCredential.user.email);
-        // سيتم التوجيه تلقائياً بواسطة onAuthStateChanged
-      } catch (error) {
-        console.error('Login error:', error);
-        let errorMessage;
-        
-        switch (error.code) {
-          case 'auth/invalid-email':
-            errorMessage = 'البريد الإلكتروني غير صالح';
-            break;
-          case 'auth/user-disabled':
-            errorMessage = 'تم تعطيل هذا الحساب';
-            break;
-          case 'auth/user-not-found':
-            errorMessage = 'البريد الإلكتروني غير مسجل';
-            break;
-          case 'auth/wrong-password':
-            errorMessage = 'كلمة المرور غير صحيحة';
-            break;
-          case 'auth/too-many-requests':
-            errorMessage = 'تم تجاوز عدد المحاولات المسموح به. يرجى المحاولة لاحقاً';
-            break;
-          default:
-            errorMessage = 'حدث خطأ أثناء تسجيل الدخول';
-        }
-        
-        showError(errorMessage);
-        toggleFormState(false);
-      }
+    // تكوين Firebase مباشرة
+    const firebaseConfig = {
+      apiKey: "AIzaSyB3bBsR5j6CHYaXkrIIF_g4ZvWGYd3WTiQ",
+      authDomain: "mr-piip-pro.firebaseapp.com",
+      projectId: "mr-piip-pro",
+      storageBucket: "mr-piip-pro.appspot.com",
+      messagingSenderId: "826519029119",
+      appId: "1:826519029119:web:548c3298af3b20f370464a",
+      measurementId: "G-MQ3QVBXJS4"
     };
 
-    // منع ظهور البيانات في الـ URL
-    if (window.location.search) {
-      window.history.replaceState({}, document.title, window.location.pathname);
+    // استيراد Firebase SDK
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+    try {
+      // تهيئة Firebase
+      const app = initializeApp(firebaseConfig);
+      const auth = getAuth(app);
+      
+      // عناصر الواجهة
+      const loginForm = document.getElementById('login-form');
+      const loginBtn = document.getElementById('login-btn');
+      const errorElement = document.getElementById('error');
+
+      // التحقق من حالة تسجيل الدخول
+      onAuthStateChanged(auth, user => {
+        if (user) {
+          console.log('User is signed in:', user.email);
+          window.location.href = "./admin.html";
+        }
+      });
+
+      // إظهار رسالة الخطأ
+      function showError(message) {
+        console.error('Error:', message);
+        errorElement.textContent = message;
+        errorElement.style.display = message ? 'block' : 'none';
+      }
+
+      // تغيير حالة النموذج
+      function toggleFormState(disabled) {
+        loginBtn.disabled = disabled;
+        loginBtn.classList.toggle('loading', disabled);
+        loginForm.email.disabled = disabled;
+        loginForm.password.disabled = disabled;
+      }
+
+      // معالجة تسجيل الدخول
+      window.handleLogin = async function(event) {
+        event.preventDefault();
+        
+        const email = loginForm.email.value.trim();
+        const password = loginForm.password.value;
+
+        console.log('Attempting login for:', email);
+
+        // التحقق من المدخلات
+        if (!email || !password) {
+          showError('يرجى إدخال البريد الإلكتروني وكلمة المرور');
+          return;
+        }
+
+        // تعطيل النموذج أثناء المعالجة
+        toggleFormState(true);
+        showError('');
+
+        try {
+          console.log('Signing in...');
+          const userCredential = await signInWithEmailAndPassword(auth, email, password);
+          console.log('Login successful:', userCredential.user.email);
+        } catch (error) {
+          console.error('Login error:', error.code, error.message);
+          let errorMessage;
+          
+          switch (error.code) {
+            case 'auth/invalid-email':
+              errorMessage = 'البريد الإلكتروني غير صالح';
+              break;
+            case 'auth/user-disabled':
+              errorMessage = 'تم تعطيل هذا الحساب';
+              break;
+            case 'auth/user-not-found':
+              errorMessage = 'البريد الإلكتروني غير مسجل';
+              break;
+            case 'auth/wrong-password':
+              errorMessage = 'كلمة المرور غير صحيحة';
+              break;
+            case 'auth/too-many-requests':
+              errorMessage = 'تم تجاوز عدد المحاولات المسموح به. يرجى المحاولة لاحقاً';
+              break;
+            case 'auth/network-request-failed':
+              errorMessage = 'فشل الاتصال بالخادم. تحقق من اتصال الإنترنت';
+              break;
+            default:
+              errorMessage = `حدث خطأ أثناء تسجيل الدخول: ${error.message}`;
+          }
+          
+          showError(errorMessage);
+          toggleFormState(false);
+        }
+      };
+    } catch (initError) {
+      console.error('Firebase initialization error:', initError);
+      showError('حدث خطأ في تهيئة النظام. يرجى المحاولة مرة أخرى لاحقاً.');
     }
   </script>
 </body>
