@@ -15,7 +15,8 @@ import {
     query,
     where,
     getDocs,
-    serverTimestamp
+    serverTimestamp,
+    writeBatch
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import { AUTH_CONFIG } from '../config/auth.js';
 import firebaseConfig from '../firebase-config.js';
@@ -153,7 +154,7 @@ class AuthService {
 
     // إنشاء أول مسؤول في النظام
     async _createFirstAdmin(user) {
-        const batch = db.batch();
+        const batch = writeBatch(db);
         console.log('Starting first admin creation process...');
 
         try {
@@ -206,7 +207,7 @@ class AuthService {
     // تحديث آخر تسجيل دخول
     async _updateLastLogin(userId) {
         try {
-            const batch = db.batch();
+            const batch = writeBatch(db);
             const timestamp = serverTimestamp();
 
             const adminRef = doc(db, AUTH_CONFIG.FIREBASE_COLLECTIONS.ADMINS, userId);
