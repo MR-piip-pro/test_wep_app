@@ -60,22 +60,18 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { 
       getAuth, 
-      signInWithEmailAndPassword,
-      createUserWithEmailAndPassword,
-      onAuthStateChanged,
-      fetchSignInMethodsForEmail 
+      signInWithEmailAndPassword, 
+      onAuthStateChanged
     } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
     import { 
       getFirestore,
       collection,
       query,
       where,
-      getDocs,
-      addDoc,
-      serverTimestamp
+      getDocs
     } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-    // تكوين Firebase مباشرة
+    // تكوين Firebase
     const firebaseConfig = {
       apiKey: "AIzaSyB3bBsR5j6CHYaXkrIIF_g4ZvWGYd3WTiQ",
       authDomain: "mr-piip-pro.firebaseapp.com",
@@ -92,9 +88,6 @@
       const auth = getAuth(app);
       const db = getFirestore(app);
       
-      // تكوين CORS
-      auth.settings.appVerificationDisabledForTesting = false;
-      
       // عناصر الواجهة
       const loginForm = document.getElementById('login-form');
       const emailInput = document.getElementById('email');
@@ -105,8 +98,8 @@
       const togglePasswordBtn = document.getElementById('toggle-password');
 
       // إعدادات محاولات تسجيل الدخول
-      const MAX_LOGIN_ATTEMPTS = 100;
-      const LOCKOUT_DURATION = 15 * 60 * 1000;
+      const MAX_LOGIN_ATTEMPTS = 5; // تقليل عدد المحاولات لزيادة الأمان
+      const LOCKOUT_DURATION = 30 * 60 * 1000; // زيادة مدة القفل إلى 30 دقيقة
       let loginAttempts = parseInt(localStorage.getItem('loginAttempts') || '0');
       let lockoutTime = parseInt(localStorage.getItem('lockoutTime') || '0');
 
@@ -117,31 +110,16 @@
           const q = query(adminsRef, where('email', '==', user.email.toLowerCase()));
           const querySnapshot = await getDocs(q);
           
-          return !querySnapshot.empty;
+          if (querySnapshot.empty) {
+            console.error('User not found in admins collection');
+            return false;
+          }
+
+          const adminDoc = querySnapshot.docs[0].data();
+          return adminDoc.role === 'admin';
         } catch (error) {
           console.error('Error checking admin permissions:', error);
           return false;
-        }
-      }
-
-      // إنشاء حساب مسؤول جديد
-      async function createAdminAccount(email, password) {
-        try {
-          // إنشاء المستخدم في Authentication
-          const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-          const user = userCredential.user;
-
-          // إضافة المستخدم إلى مجموعة المسؤولين في Firestore
-          await addDoc(collection(db, 'admins'), {
-            email: email.toLowerCase(),
-            role: 'admin',
-            createdAt: serverTimestamp()
-          });
-
-          return user;
-        } catch (error) {
-          console.error('Error creating admin account:', error);
-          throw error;
         }
       }
 
@@ -246,27 +224,6 @@
         showError('');
 
         try {
-          // التحقق من وجود البريد الإلكتروني
-          const signInMethods = await fetchSignInMethodsForEmail(auth, email);
-          
-          if (signInMethods.length === 0) {
-            // إذا لم يكن المستخدم موجوداً، نحاول إنشاء حساب جديد
-            try {
-              await createAdminAccount(email, password);
-              console.log('Admin account created successfully');
-              // سيتم التعامل مع تسجيل الدخول تلقائياً من خلال onAuthStateChanged
-              return;
-            } catch (createError) {
-              if (createError.code === 'auth/email-already-in-use') {
-                showError('البريد الإلكتروني مستخدم بالفعل');
-              } else {
-                showError('فشل في إنشاء الحساب. يرجى المحاولة مرة أخرى');
-              }
-              enableForm();
-              return;
-            }
-          }
-
           // محاولة تسجيل الدخول
           await signInWithEmailAndPassword(auth, email, password);
           
@@ -278,7 +235,7 @@
           if (loginAttempts >= MAX_LOGIN_ATTEMPTS) {
             lockoutTime = Date.now() + LOCKOUT_DURATION;
             localStorage.setItem('lockoutTime', lockoutTime.toString());
-            showError(`تم تجاوز عدد المحاولات المسموح بها. يرجى الانتظار 15 دقيقة`);
+            showError(`تم تجاوز عدد المحاولات المسموح بها. يرجى الانتظار 30 دقيقة`);
             disableForm();
             return;
           }
@@ -288,11 +245,14 @@
             case 'auth/invalid-email':
               errorMessage = 'البريد الإلكتروني غير صالح';
               break;
-            case 'auth/user-disabled':
-              errorMessage = 'تم تعطيل هذا الحساب';
+            case 'auth/user-not-found':
+              errorMessage = 'البريد الإلكتروني غير مسجل في النظام';
               break;
             case 'auth/wrong-password':
               errorMessage = 'كلمة المرور غير صحيحة';
+              break;
+            case 'auth/user-disabled':
+              errorMessage = 'تم تعطيل هذا الحساب';
               break;
             case 'auth/network-request-failed':
               errorMessage = 'فشل الاتصال بالخادم. تحقق من اتصال الإنترنت';
@@ -306,6 +266,10 @@
           updateAttemptsDisplay();
         }
       };
+
+      // التحقق من حالة القفل عند تحميل الصفحة
+      checkLockoutStatus();
+      updateAttemptsDisplay();
 
     } catch (error) {
       console.error('Initialization error:', error);
