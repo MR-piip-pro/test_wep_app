@@ -1,36 +1,20 @@
 // app.js
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { 
-  getFirestore, 
-  collection, 
-  getDocs, 
-  query, 
-  orderBy, 
-  limit,
-  startAfter,
-  where
+    getFirestore, 
+    collection, 
+    getDocs, 
+    query, 
+    orderBy, 
+    limit,
+    startAfter,
+    where
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { firebaseConfig } from './firebase-config.js';
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 
-// متغيرات عامة للتطبيق
-let db;
-let app;
-
-// تهيئة Firebase مع التحقق من الأمان
-async function initializeFirebase() {
-  try {
-    console.log('بدء تهيئة Firebase...');
-    app = initializeApp(firebaseConfig);
-    db = getFirestore(app);
-    console.log('تم تهيئة Firebase بنجاح');
-    
-    // تحميل الأدوات مباشرة بعد تهيئة Firebase
-    await loadTools();
-  } catch (error) {
-    console.error('خطأ في تهيئة Firebase:', error);
-    showError('فشل في الاتصال بالخادم. يرجى المحاولة مرة أخرى.');
-  }
-}
+// تهيئة Firebase
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
 
 // العناصر في DOM
 const toolsContainer = document.getElementById("tools-container");
@@ -279,27 +263,27 @@ function getCategoryName(category) {
   return categories[category] || category;
 }
 
-// إعداد أحداث DOM
+// تحميل الأدوات عند تحميل الصفحة
 document.addEventListener('DOMContentLoaded', () => {
-  // بدء تهيئة Firebase عند تحميل الصفحة
-  initializeFirebase();
-  
-  // إضافة مستمعي الأحداث
-  if (searchInput) {
-    searchInput.addEventListener('input', filterTools);
-  }
-  
-  if (searchBtn) {
-    searchBtn.addEventListener('click', filterTools);
-  }
-  
-  if (categoryFilter) {
-    categoryFilter.addEventListener('change', filterTools);
-  }
-  
-  if (sortFilter) {
-    sortFilter.addEventListener('change', filterTools);
-  }
+    console.log('تم تحميل الصفحة، جاري تحميل الأدوات...');
+    loadTools();
+    
+    // إضافة مستمعي الأحداث
+    if (searchInput) {
+        searchInput.addEventListener('input', filterTools);
+    }
+    
+    if (searchBtn) {
+        searchBtn.addEventListener('click', filterTools);
+    }
+    
+    if (categoryFilter) {
+        categoryFilter.addEventListener('change', filterTools);
+    }
+    
+    if (sortFilter) {
+        sortFilter.addEventListener('change', filterTools);
+    }
 });
 
 // تأكيد التحميل
