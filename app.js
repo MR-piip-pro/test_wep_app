@@ -36,7 +36,10 @@ function sanitizeInput(input) {
 
 // تحميل الأدوات من Firestore
 async function loadTools() {
-  if (isLoading) return;
+  if (isLoading) {
+    console.log('جاري تحميل الأدوات بالفعل...');
+    return;
+  }
   
   isLoading = true;
   showLoading();
@@ -45,12 +48,16 @@ async function loadTools() {
     console.log('بدء تحميل الأدوات...');
     
     const toolsRef = collection(db, "tools");
+    console.log('تم إنشاء مرجع المجموعة:', toolsRef.path);
+
     const toolsQuery = query(
       toolsRef,
       orderBy("added_at", "desc"),
       limit(50)
     );
+    console.log('تم إنشاء الاستعلام');
 
+    console.log('جاري تنفيذ الاستعلام...');
     const snapshot = await getDocs(toolsQuery);
     console.log('تم استلام البيانات:', snapshot.size, 'أداة');
 
@@ -61,7 +68,10 @@ async function loadTools() {
     }
 
     allTools = snapshot.docs.map(doc => {
+      console.log('معالجة الأداة:', doc.id);
       const data = doc.data();
+      console.log('بيانات الأداة:', data);
+      
       return {
         id: doc.id,
         name: sanitizeInput(data.name || ''),
@@ -74,12 +84,18 @@ async function loadTools() {
     });
 
     console.log('تم معالجة', allTools.length, 'أداة بنجاح');
+    console.log('الأدوات:', allTools);
     
     filteredTools = [...allTools];
     renderTools();
   } catch (error) {
     console.error("خطأ أثناء تحميل الأدوات:", error);
-    showError(error.message);
+    console.error("تفاصيل الخطأ:", {
+      message: error.message,
+      code: error.code,
+      stack: error.stack
+    });
+    showError(`خطأ في تحميل الأدوات: ${error.message}`);
   } finally {
     isLoading = false;
   }
