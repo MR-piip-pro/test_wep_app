@@ -54,6 +54,7 @@ const addToolForm = document.getElementById('add-tool-form');
 const addCategoryForm = document.getElementById('add-category-form');
 const siteNameInput = document.getElementById('site-name');
 const themeSelect = document.getElementById('theme');
+const logoutBtn = document.getElementById('logout-btn');
 
 // Stats Elements
 const totalToolsElement = document.getElementById('total-tools');
@@ -86,11 +87,11 @@ async function loadTools() {
             const tool = doc.data();
             const row = document.createElement('tr');
             row.innerHTML = `
-                <td>${tool.name}</td>
-                <td>${tool.description}</td>
-                <td>${tool.category}</td>
-                <td>${tool.downloads || 0}</td>
-                <td>
+                <td class="tool-name">${tool.name}</td>
+                <td class="tool-description">${tool.description}</td>
+                <td class="tool-category">${tool.category}</td>
+                <td class="tool-downloads">${tool.downloads || 0}</td>
+                <td class="tool-actions">
                     <button onclick="editTool('${doc.id}')" class="edit-btn">
                         <i class="fas fa-edit"></i>
                     </button>
@@ -112,8 +113,7 @@ async function uploadFile(file, path) {
     try {
         const storageRef = ref(storage, path);
         const snapshot = await uploadBytes(storageRef, file);
-        const downloadURL = await getDownloadURL(snapshot.ref);
-        return downloadURL;
+        return await getDownloadURL(snapshot.ref);
     } catch (error) {
         console.error('Error uploading file:', error);
         throw error;
@@ -126,7 +126,6 @@ async function deleteFile(path) {
         await deleteObject(storageRef);
     } catch (error) {
         console.error('Error deleting file:', error);
-        // Don't throw error as the file might not exist
     }
 }
 
@@ -183,64 +182,62 @@ async function editTool(toolId) {
 
         const tool = toolDoc.data();
         
-        // Fill the edit form with tool data
-        document.getElementById('edit-tool-id').value = toolId;
-        document.getElementById('edit-tool-name').value = tool.name;
-        document.getElementById('edit-tool-description').value = tool.description;
-        document.getElementById('edit-tool-category').value = tool.category;
-        document.getElementById('edit-tool-link').value = tool.isFile ? '' : tool.link;
-        document.getElementById('edit-tool-tags').value = tool.tags.join(', ');
+        // تعبئة النموذج بالبيانات الحالية
+        document.getElementById('tool-name').value = tool.name;
+        document.getElementById('tool-description').value = tool.description;
+        document.getElementById('tool-category').value = tool.category;
+        document.getElementById('tool-tags').value = tool.tags.join(', ');
         
-        // Show current file name if it's a file
-        const fileLabel = document.getElementById('edit-tool-file-label');
         if (tool.isFile) {
-            fileLabel.textContent = 'الملف الحالي: ' + tool.link.split('/').pop();
+            document.getElementById('tool-file-label').textContent = 'الملف الحالي';
         } else {
-            fileLabel.textContent = 'اختر ملفاً';
+            document.getElementById('tool-link').value = tool.link;
         }
+
+        // تحويل نموذج الإضافة إلى نموذج التعديل
+        const form = document.getElementById('add-tool-form');
+        form.dataset.editId = toolId;
+        document.querySelector('#add-tool-modal .modal-header h2').textContent = 'تعديل الأداة';
+        document.querySelector('#add-tool-modal .modal-footer button[type="submit"]').textContent = 'حفظ التعديلات';
         
-        document.getElementById('edit-tool-modal').style.display = 'flex';
+        openModal('add-tool-modal');
     } catch (error) {
-        console.error('Error loading tool data:', error);
+        console.error('Error loading tool for edit:', error);
         showNotification('حدث خطأ في تحميل بيانات الأداة', 'error');
     }
 }
 
-// Add event listener for edit tool form
-document.getElementById('edit-tool-form').addEventListener('submit', async (event) => {
-    event.preventDefault();
-    
-    const toolId = document.getElementById('edit-tool-id').value;
-    const toolData = {
-        name: document.getElementById('edit-tool-name').value,
-        description: document.getElementById('edit-tool-description').value,
-        category: document.getElementById('edit-tool-category').value,
-        link: document.getElementById('edit-tool-link').value,
-        tags: document.getElementById('edit-tool-tags').value.split(',').map(tag => tag.trim()),
-        updatedAt: Timestamp.now()
-    };
+async function deleteTool(toolId) {
+    if (!confirm('هل أنت متأكد من حذف هذه الأداة؟')) {
+        return;
+    }
 
     try {
-        await updateDoc(doc(db, 'tools', toolId), toolData);
-        closeModal('edit-tool-modal');
-        loadTools();
-        showNotification('تم تحديث الأداة بنجاح', 'success');
-    } catch (error) {
-        console.error('Error updating tool:', error);
-        showNotification('حدث خطأ في تحديث الأداة', 'error');
-    }
-});
-
-async function deleteTool(toolId) {
-    if (confirm('هل أنت متأكد من حذف هذه الأداة؟')) {
-        try {
-            await deleteDoc(doc(db, 'tools', toolId));
-            loadTools();
-            showNotification('تم حذف الأداة بنجاح', 'success');
-        } catch (error) {
-            console.error('Error deleting tool:', error);
-            showNotification('حدث خطأ في حذف الأداة', 'error');
+        const toolRef = doc(db, 'tools', toolId);
+        const toolDoc = await getDoc(toolRef);
+        
+        if (!toolDoc.exists()) {
+            showNotification('الأداة غير موجودة', 'error');
+            return;
         }
+
+        const tool = toolDoc.data();
+        
+        // حذف الملف من التخزين إذا كان موجوداً
+        if (tool.isFile && tool.link) {
+            const fileUrl = new URL(tool.link);
+            const filePath = decodeURIComponent(fileUrl.pathname.split('/o/')[1].split('?')[0]);
+            await deleteFile(filePath);
+        }
+
+        await deleteDoc(toolRef);
+        await logActivity('delete_tool', tool.name);
+        
+        loadTools();
+        showNotification('تم حذف الأداة بنجاح', 'success');
+    } catch (error) {
+        console.error('Error deleting tool:', error);
+        showNotification('حدث خطأ في حذف الأداة', 'error');
     }
 }
 
@@ -260,15 +257,18 @@ async function loadCategories() {
             const categoryCard = document.createElement('div');
             categoryCard.className = 'category-card';
             categoryCard.innerHTML = `
-                <h3>${category.name}</h3>
-                <p>${category.description}</p>
-                <div class="category-actions">
-                    <button onclick="editCategory('${doc.id}')" class="edit-btn">
-                        <i class="fas fa-edit"></i>
-                    </button>
-                    <button onclick="deleteCategory('${doc.id}')" class="delete-btn">
-                        <i class="fas fa-trash"></i>
-                    </button>
+                ${category.imageUrl ? `<img src="${category.imageUrl}" alt="${category.name}" class="category-image">` : ''}
+                <div class="category-content">
+                    <h3>${category.name}</h3>
+                    <p>${category.description}</p>
+                    <div class="category-actions">
+                        <button onclick="editCategory('${doc.id}')" class="edit-btn">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button onclick="deleteCategory('${doc.id}')" class="delete-btn">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
                 </div>
             `;
             categoriesGrid.appendChild(categoryCard);
@@ -334,51 +334,68 @@ async function editCategory(categoryId) {
 
         const category = categoryDoc.data();
         
-        // Fill the edit form with category data
-        document.getElementById('edit-category-id').value = categoryId;
-        document.getElementById('edit-category-name').value = category.name;
-        document.getElementById('edit-category-description').value = category.description;
+        // تعبئة النموذج بالبيانات الحالية
+        document.getElementById('category-name').value = category.name;
+        document.getElementById('category-description').value = category.description;
         
-        // Show the edit modal
-        document.getElementById('edit-category-modal').style.display = 'flex';
+        if (category.imageUrl) {
+            document.getElementById('category-image-label').textContent = 'الصورة الحالية';
+        }
+
+        // تحويل نموذج الإضافة إلى نموذج التعديل
+        const form = document.getElementById('add-category-form');
+        form.dataset.editId = categoryId;
+        document.querySelector('#add-category-modal .modal-header h2').textContent = 'تعديل الفئة';
+        document.querySelector('#add-category-modal .modal-footer button[type="submit"]').textContent = 'حفظ التعديلات';
+        
+        openModal('add-category-modal');
     } catch (error) {
-        console.error('Error loading category data:', error);
+        console.error('Error loading category for edit:', error);
         showNotification('حدث خطأ في تحميل بيانات الفئة', 'error');
     }
 }
 
-// Add event listener for edit category form
-document.getElementById('edit-category-form').addEventListener('submit', async (event) => {
-    event.preventDefault();
-    
-    const categoryId = document.getElementById('edit-category-id').value;
-    const categoryData = {
-        name: document.getElementById('edit-category-name').value,
-        description: document.getElementById('edit-category-description').value,
-        updatedAt: Timestamp.now()
-    };
+async function deleteCategory(categoryId) {
+    if (!confirm('هل أنت متأكد من حذف هذه الفئة؟')) {
+        return;
+    }
 
     try {
-        await updateDoc(doc(db, 'categories', categoryId), categoryData);
-        closeModal('edit-category-modal');
-        loadCategories();
-        showNotification('تم تحديث الفئة بنجاح', 'success');
-    } catch (error) {
-        console.error('Error updating category:', error);
-        showNotification('حدث خطأ في تحديث الفئة', 'error');
-    }
-});
-
-async function deleteCategory(categoryId) {
-    if (confirm('هل أنت متأكد من حذف هذه الفئة؟')) {
-        try {
-            await deleteDoc(doc(db, 'categories', categoryId));
-            loadCategories();
-            showNotification('تم حذف الفئة بنجاح', 'success');
-        } catch (error) {
-            console.error('Error deleting category:', error);
-            showNotification('حدث خطأ في حذف الفئة', 'error');
+        const categoryRef = doc(db, 'categories', categoryId);
+        const categoryDoc = await getDoc(categoryRef);
+        
+        if (!categoryDoc.exists()) {
+            showNotification('الفئة غير موجودة', 'error');
+            return;
         }
+
+        const category = categoryDoc.data();
+        
+        // حذف الصورة من التخزين إذا كانت موجودة
+        if (category.imageUrl) {
+            const imageUrl = new URL(category.imageUrl);
+            const imagePath = decodeURIComponent(imageUrl.pathname.split('/o/')[1].split('?')[0]);
+            await deleteFile(imagePath);
+        }
+
+        // التحقق من وجود أدوات مرتبطة بهذه الفئة
+        const toolsRef = collection(db, 'tools');
+        const q = query(toolsRef, where('category', '==', category.name));
+        const toolsSnapshot = await getDocs(q);
+        
+        if (!toolsSnapshot.empty) {
+            showNotification('لا يمكن حذف الفئة لأنها تحتوي على أدوات', 'error');
+            return;
+        }
+
+        await deleteDoc(categoryRef);
+        await logActivity('delete_category', category.name);
+        
+        loadCategories();
+        showNotification('تم حذف الفئة بنجاح', 'success');
+    } catch (error) {
+        console.error('Error deleting category:', error);
+        showNotification('حدث خطأ في حذف الفئة', 'error');
     }
 }
 
@@ -499,6 +516,10 @@ function closeModal(modalId) {
     document.getElementById(modalId).style.display = 'none';
 }
 
+function openModal(modalId) {
+    document.getElementById(modalId).style.display = 'flex';
+}
+
 function formatTimestamp(timestamp) {
     const date = timestamp.toDate();
     return new Intl.DateTimeFormat('ar-SA', {
@@ -538,6 +559,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 window.location.href = './usr.html';
                 return;
             }
+
+            // Load initial data
+            loadTools();
+            loadCategories();
+            loadDashboardStats();
+            
+            // Load settings
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            themeSelect.value = savedTheme;
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            
         } catch (error) {
             console.error('Error checking admin status:', error);
             await signOut(auth);
@@ -545,16 +577,18 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Load initial data
-    loadTools();
-    loadCategories();
-    loadDashboardStats();
-    loadSettings();
-
     // Add event listeners
     addToolForm.addEventListener('submit', addTool);
     addCategoryForm.addEventListener('submit', addCategory);
-    document.getElementById('save-settings').addEventListener('click', saveSettings);
+    logoutBtn.addEventListener('click', async () => {
+        try {
+            await signOut(auth);
+            window.location.href = './usr.html';
+        } catch (error) {
+            console.error('Error signing out:', error);
+            showNotification('حدث خطأ أثناء تسجيل الخروج', 'error');
+        }
+    });
     
     // Search and filter
     toolSearch.addEventListener('input', () => {
@@ -599,6 +633,38 @@ document.addEventListener('DOMContentLoaded', () => {
             const toolId = e.target.dataset.toolId;
             await trackDownload(toolId);
         }
+    });
+
+    // Toggle sections
+    const navItems = document.querySelectorAll('.nav-item');
+    const sections = document.querySelectorAll('.content-section');
+
+    navItems.forEach(item => {
+        item.addEventListener('click', () => {
+            const targetSection = item.dataset.section;
+            
+            navItems.forEach(navItem => navItem.classList.remove('active'));
+            item.classList.add('active');
+            
+            sections.forEach(section => {
+                section.classList.remove('active');
+                if (section.id === targetSection) {
+                    section.classList.add('active');
+                }
+            });
+        });
+    });
+
+    // Save settings
+    document.getElementById('save-settings').addEventListener('click', () => {
+        const theme = themeSelect.value;
+        const siteName = siteNameInput.value;
+        
+        localStorage.setItem('theme', theme);
+        localStorage.setItem('siteName', siteName);
+        
+        document.documentElement.setAttribute('data-theme', theme);
+        showNotification('تم حفظ الإعدادات بنجاح', 'success');
     });
 });
 

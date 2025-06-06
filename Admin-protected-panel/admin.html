@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://www.gstatic.com 'unsafe-inline'; connect-src https://*.firebaseio.com https://*.googleapis.com; style-src 'self' https://cdnjs.cloudflare.com 'unsafe-inline';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://www.gstatic.com https://*.firebaseio.com https://*.googleapis.com; script-src 'self' https://www.gstatic.com 'unsafe-inline' https://cdnjs.cloudflare.com https://www.googleapis.com; connect-src https://*.firebaseio.com https://*.googleapis.com; style-src 'self' https://cdnjs.cloudflare.com 'unsafe-inline'; img-src 'self' https://*.googleapis.com data: blob:;">
   <meta http-equiv="X-Content-Type-Options" content="nosniff">
   <meta http-equiv="X-Frame-Options" content="DENY">
   <meta name="referrer" content="strict-origin-when-cross-origin">
@@ -410,7 +410,38 @@
     </div>
   </div>
 
-  <!-- Firebase Scripts -->
+  <!-- Firebase App -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getAuth } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+    import { getFirestore } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    import { getStorage } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
+
+    // تكوين Firebase
+    const firebaseConfig = {
+      apiKey: "AIzaSyB3bBsR5j6CHYaXkrIIF_g4ZvWGYd3WTiQ",
+      authDomain: "mr-piip-pro.firebaseapp.com",
+      projectId: "mr-piip-pro",
+      storageBucket: "mr-piip-pro.firebasestorage.app",
+      messagingSenderId: "826519029119",
+      appId: "1:826519029119:web:548c3298af3b20f370464a",
+      measurementId: "G-MQ3QVBXJS4"
+    };
+
+    // تهيئة Firebase
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+    const storage = getStorage(app);
+
+    // جعل المتغيرات متاحة عالمياً
+    window.firebaseApp = app;
+    window.firebaseAuth = auth;
+    window.firebaseDb = db;
+    window.firebaseStorage = storage;
+  </script>
+
+  <!-- Custom JavaScript -->
   <script type="module" src="admin.js"></script>
 </body>
 </html>

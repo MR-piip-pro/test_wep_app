@@ -3,73 +3,213 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://www.gstatic.com 'unsafe-inline'; connect-src https://*.firebaseio.com https://*.googleapis.com; style-src 'self' 'unsafe-inline';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://www.gstatic.com https://*.firebaseio.com https://*.googleapis.com; script-src 'self' https://www.gstatic.com 'unsafe-inline' https://cdnjs.cloudflare.com https://www.googleapis.com; connect-src https://*.firebaseio.com https://*.googleapis.com; style-src 'self' https://cdnjs.cloudflare.com 'unsafe-inline'; img-src 'self' https://*.googleapis.com data: blob:;">
   <meta http-equiv="X-Content-Type-Options" content="nosniff">
   <meta http-equiv="X-Frame-Options" content="DENY">
-  <meta name="referrer" content="no-referrer">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
   <title>تسجيل الدخول - لوحة الإدارة</title>
-  <link rel="stylesheet" href="usr.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <style>
+    :root {
+      --primary-color: #2196F3;
+      --primary-dark: #1976D2;
+      --primary-light: #BBDEFB;
+      --text-primary: #212121;
+      --text-secondary: #757575;
+      --background-primary: #FFFFFF;
+      --background-secondary: #F5F5F5;
+      --error-color: #F44336;
+      --success-color: #4CAF50;
+      --shadow-color: rgba(0, 0, 0, 0.1);
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      line-height: 1.6;
+      color: var(--text-primary);
+      background-color: var(--background-secondary);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 1rem;
+    }
+
+    .login-container {
+      background-color: var(--background-primary);
+      border-radius: 8px;
+      box-shadow: 0 4px 6px var(--shadow-color);
+      padding: 2rem;
+      width: 100%;
+      max-width: 400px;
+      animation: fadeIn 0.3s ease;
+    }
+
+    .login-header {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+
+    .login-header h1 {
+      color: var(--primary-color);
+      margin-bottom: 0.5rem;
+    }
+
+    .login-header p {
+      color: var(--text-secondary);
+    }
+
+    .form-group {
+      margin-bottom: 1.5rem;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 0.5rem;
+      color: var(--text-secondary);
+    }
+
+    .form-group input {
+      width: 100%;
+      padding: 0.75rem;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 1rem;
+      transition: border-color 0.3s ease;
+    }
+
+    .form-group input:focus {
+      outline: none;
+      border-color: var(--primary-color);
+    }
+
+    .login-btn {
+      width: 100%;
+      padding: 0.75rem;
+      background-color: var(--primary-color);
+      color: white;
+      border: none;
+      border-radius: 4px;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+
+    .login-btn:hover {
+      background-color: var(--primary-dark);
+    }
+
+    .login-btn:disabled {
+      background-color: var(--text-secondary);
+      cursor: not-allowed;
+    }
+
+    .error-message {
+      color: var(--error-color);
+      font-size: 0.9rem;
+      margin-top: 0.5rem;
+      display: none;
+    }
+
+    .error-message.visible {
+      display: block;
+    }
+
+    .loading {
+      display: inline-block;
+      width: 1rem;
+      height: 1rem;
+      border: 2px solid #fff;
+      border-radius: 50%;
+      border-top-color: transparent;
+      animation: spin 1s linear infinite;
+      margin-right: 0.5rem;
+      vertical-align: middle;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(-20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    .notification {
+      position: fixed;
+      bottom: 20px;
+      left: 20px;
+      padding: 1rem 2rem;
+      border-radius: 4px;
+      color: white;
+      box-shadow: 0 2px 4px var(--shadow-color);
+      animation: slideIn 0.3s ease;
+      z-index: 1000;
+    }
+
+    .notification.error {
+      background-color: var(--error-color);
+    }
+
+    .notification.success {
+      background-color: var(--success-color);
+    }
+
+    @keyframes slideIn {
+      from {
+        transform: translateX(-100%);
+        opacity: 0;
+      }
+      to {
+        transform: translateX(0);
+        opacity: 1;
+      }
+    }
+  </style>
 </head>
 <body>
-  <main>
-    <div class="login-container">
-      <div class="login-box">
-        <h1>🔐 تسجيل الدخول إلى لوحة الإدارة</h1>
-        <form id="login-form" onsubmit="handleLogin(event)">
-          <div class="form-group">
-            <label for="email">البريد الإلكتروني</label>
-            <input 
-              type="email" 
-              id="email" 
-              name="email"
-              required 
-              dir="ltr"
-              autocomplete="username"
-              maxlength="100"
-            >
-          </div>
-          <div class="form-group">
-            <label for="password">كلمة المرور</label>
-            <div class="password-input">
-              <input 
-                type="password" 
-                id="password" 
-                name="password"
-                required 
-                dir="ltr"
-                autocomplete="current-password"
-                minlength="6"
-              >
-              <button type="button" id="toggle-password" aria-label="إظهار/إخفاء كلمة المرور">
-                <svg class="eye-icon" viewBox="0 0 24 24" width="24" height="24">
-                  <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>
-                </svg>
-              </button>
-            </div>
-          </div>
-          <button type="submit" id="login-btn">تسجيل الدخول</button>
-          <div id="error" class="error-message" role="alert"></div>
-          <div id="attempts" class="attempts-message" role="status"></div>
-        </form>
-      </div>
+  <div class="login-container">
+    <div class="login-header">
+      <h1>لوحة الإدارة</h1>
+      <p>يرجى تسجيل الدخول للمتابعة</p>
     </div>
-  </main>
+    <form id="login-form">
+      <div class="form-group">
+        <label for="email">البريد الإلكتروني</label>
+        <input type="email" id="email" name="email" required>
+      </div>
+      <div class="form-group">
+        <label for="password">كلمة المرور</label>
+        <input type="password" id="password" name="password" required>
+        <div id="error-message" class="error-message"></div>
+      </div>
+      <button type="submit" id="login-btn" class="login-btn">
+        <span id="loading" class="loading" style="display: none;"></span>
+        تسجيل الدخول
+      </button>
+    </form>
+  </div>
 
-  <!-- Firebase SDK -->
+  <!-- Firebase App -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { 
-      getAuth, 
-      signInWithEmailAndPassword, 
-      onAuthStateChanged
-    } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-    import { 
-      getFirestore,
-      collection,
-      query,
-      where,
-      getDocs
-    } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+    import { getFirestore, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
     // تكوين Firebase
     const firebaseConfig = {
@@ -82,199 +222,94 @@
       measurementId: "G-MQ3QVBXJS4"
     };
 
-    try {
-      // تهيئة Firebase
-      const app = initializeApp(firebaseConfig);
-      const auth = getAuth(app);
-      const db = getFirestore(app);
-      
-      // عناصر الواجهة
-      const loginForm = document.getElementById('login-form');
-      const emailInput = document.getElementById('email');
-      const passwordInput = document.getElementById('password');
-      const loginBtn = document.getElementById('login-btn');
-      const errorElement = document.getElementById('error');
-      const attemptsElement = document.getElementById('attempts');
-      const togglePasswordBtn = document.getElementById('toggle-password');
+    // تهيئة Firebase
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
 
-      // إعدادات محاولات تسجيل الدخول
-      const MAX_LOGIN_ATTEMPTS = 5; // تقليل عدد المحاولات لزيادة الأمان
-      const LOCKOUT_DURATION = 30 * 60 * 1000; // زيادة مدة القفل إلى 30 دقيقة
-      let loginAttempts = parseInt(localStorage.getItem('loginAttempts') || '0');
-      let lockoutTime = parseInt(localStorage.getItem('lockoutTime') || '0');
-
-      // التحقق من صلاحيات المسؤول
-      async function checkAdminPermissions(user) {
-        try {
-          const adminsRef = collection(db, 'admins');
-          const q = query(adminsRef, where('email', '==', user.email.toLowerCase()));
-          const querySnapshot = await getDocs(q);
-          
-          if (querySnapshot.empty) {
-            console.error('User not found in admins collection');
-            return false;
-          }
-
-          const adminDoc = querySnapshot.docs[0].data();
-          return adminDoc.role === 'admin';
-        } catch (error) {
-          console.error('Error checking admin permissions:', error);
-          return false;
-        }
+    // التحقق من صلاحيات المسؤول
+    async function checkAdminPermissions(user) {
+      try {
+        const adminsRef = collection(db, 'admins');
+        const q = query(adminsRef, where('email', '==', user.email.toLowerCase()));
+        const querySnapshot = await getDocs(q);
+        return !querySnapshot.empty;
+      } catch (error) {
+        console.error('Error checking admin permissions:', error);
+        return false;
       }
-
-      // التحقق من حالة تسجيل الدخول
-      onAuthStateChanged(auth, async (user) => {
-        if (user) {
-          try {
-            const isAdmin = await checkAdminPermissions(user);
-            
-            if (isAdmin) {
-              console.log('Admin logged in successfully');
-              loginAttempts = 0;
-              localStorage.setItem('loginAttempts', '0');
-              localStorage.removeItem('lockoutTime');
-              
-              // تأمين عملية التوجيه
-              const adminUrl = new URL('./admin.html', window.location.href).href;
-              window.location.replace(adminUrl);
-            } else {
-              console.log('Unauthorized access attempt');
-              await auth.signOut();
-              showError('ليس لديك صلاحية الوصول إلى لوحة الإدارة');
-              enableForm();
-            }
-          } catch (error) {
-            console.error('Auth state error:', error);
-            showError('حدث خطأ في التحقق من الصلاحيات');
-            enableForm();
-          }
-        }
-      });
-
-      // إظهار/إخفاء كلمة المرور
-      togglePasswordBtn.addEventListener('click', () => {
-        const type = passwordInput.type === 'password' ? 'text' : 'password';
-        passwordInput.type = type;
-        togglePasswordBtn.setAttribute('aria-label', 
-          type === 'password' ? 'إظهار كلمة المرور' : 'إخفاء كلمة المرور'
-        );
-      });
-
-      // التحقق من حالة القفل
-      function checkLockoutStatus() {
-        const now = Date.now();
-        if (lockoutTime > now) {
-          const remainingMinutes = Math.ceil((lockoutTime - now) / 60000);
-          showError(`تم تجاوز عدد المحاولات المسموح بها. يرجى الانتظار ${remainingMinutes} دقيقة`);
-          disableForm();
-          return false;
-        }
-        if (loginAttempts >= MAX_LOGIN_ATTEMPTS) {
-          loginAttempts = 0;
-          localStorage.setItem('loginAttempts', '0');
-          localStorage.removeItem('lockoutTime');
-        }
-        updateAttemptsDisplay();
-        return true;
-      }
-
-      function updateAttemptsDisplay() {
-        const remainingAttempts = MAX_LOGIN_ATTEMPTS - loginAttempts;
-        attemptsElement.textContent = `المحاولات المتبقية: ${remainingAttempts}`;
-      }
-
-      function showError(message) {
-        console.error('Error:', message);
-        errorElement.textContent = message;
-        errorElement.style.display = message ? 'block' : 'none';
-      }
-
-      function disableForm() {
-        loginBtn.disabled = true;
-        emailInput.disabled = true;
-        passwordInput.disabled = true;
-        togglePasswordBtn.disabled = true;
-      }
-
-      function enableForm() {
-        loginBtn.disabled = false;
-        emailInput.disabled = false;
-        passwordInput.disabled = false;
-        togglePasswordBtn.disabled = false;
-      }
-
-      // معالجة تسجيل الدخول
-      window.handleLogin = async function(event) {
-        event.preventDefault();
-        
-        if (!checkLockoutStatus()) {
-          return;
-        }
-
-        const email = emailInput.value.trim().toLowerCase();
-        const password = passwordInput.value;
-
-        if (!email || !password) {
-          showError('يرجى إدخال البريد الإلكتروني وكلمة المرور');
-          return;
-        }
-
-        disableForm();
-        showError('');
-
-        try {
-          // محاولة تسجيل الدخول
-          await signInWithEmailAndPassword(auth, email, password);
-          
-        } catch (error) {
-          console.error('Login error:', error.code, error.message);
-          loginAttempts++;
-          localStorage.setItem('loginAttempts', loginAttempts.toString());
-          
-          if (loginAttempts >= MAX_LOGIN_ATTEMPTS) {
-            lockoutTime = Date.now() + LOCKOUT_DURATION;
-            localStorage.setItem('lockoutTime', lockoutTime.toString());
-            showError(`تم تجاوز عدد المحاولات المسموح بها. يرجى الانتظار 30 دقيقة`);
-            disableForm();
-            return;
-          }
-
-          let errorMessage;
-          switch (error.code) {
-            case 'auth/invalid-email':
-              errorMessage = 'البريد الإلكتروني غير صالح';
-              break;
-            case 'auth/user-not-found':
-              errorMessage = 'البريد الإلكتروني غير مسجل في النظام';
-              break;
-            case 'auth/wrong-password':
-              errorMessage = 'كلمة المرور غير صحيحة';
-              break;
-            case 'auth/user-disabled':
-              errorMessage = 'تم تعطيل هذا الحساب';
-              break;
-            case 'auth/network-request-failed':
-              errorMessage = 'فشل الاتصال بالخادم. تحقق من اتصال الإنترنت';
-              break;
-            default:
-              errorMessage = 'حدث خطأ غير متوقع. يرجى المحاولة مرة أخرى';
-          }
-          
-          showError(errorMessage);
-          enableForm();
-          updateAttemptsDisplay();
-        }
-      };
-
-      // التحقق من حالة القفل عند تحميل الصفحة
-      checkLockoutStatus();
-      updateAttemptsDisplay();
-
-    } catch (error) {
-      console.error('Initialization error:', error);
-      showError('حدث خطأ في تهيئة النظام');
     }
+
+    // إظهار رسالة الخطأ
+    function showError(message) {
+      const errorElement = document.getElementById('error-message');
+      errorElement.textContent = message;
+      errorElement.classList.add('visible');
+    }
+
+    // إظهار الإشعار
+    function showNotification(message, type) {
+      const notification = document.createElement('div');
+      notification.className = `notification ${type}`;
+      notification.textContent = message;
+      
+      document.body.appendChild(notification);
+      
+      setTimeout(() => {
+        notification.remove();
+      }, 3000);
+    }
+
+    // معالجة تسجيل الدخول
+    document.getElementById('login-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+      const loginBtn = document.getElementById('login-btn');
+      const loading = document.getElementById('loading');
+
+      // تعطيل الزر وإظهار التحميل
+      loginBtn.disabled = true;
+      loading.style.display = 'inline-block';
+      
+      try {
+        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        const isAdmin = await checkAdminPermissions(userCredential.user);
+
+        if (isAdmin) {
+          showNotification('تم تسجيل الدخول بنجاح', 'success');
+          window.location.href = './admin.html';
+        } else {
+          await auth.signOut();
+          showError('ليس لديك صلاحيات الوصول إلى لوحة الإدارة');
+        }
+      } catch (error) {
+        console.error('Error during login:', error);
+        let errorMessage = 'حدث خطأ أثناء تسجيل الدخول';
+        
+        switch (error.code) {
+          case 'auth/invalid-email':
+            errorMessage = 'البريد الإلكتروني غير صالح';
+            break;
+          case 'auth/user-disabled':
+            errorMessage = 'تم تعطيل هذا الحساب';
+            break;
+          case 'auth/user-not-found':
+            errorMessage = 'البريد الإلكتروني غير مسجل';
+            break;
+          case 'auth/wrong-password':
+            errorMessage = 'كلمة المرور غير صحيحة';
+            break;
+        }
+        
+        showError(errorMessage);
+      } finally {
+        // إعادة تفعيل الزر وإخفاء التحميل
+        loginBtn.disabled = false;
+        loading.style.display = 'none';
+      }
+    });
   </script>
 </body>
 </html>
