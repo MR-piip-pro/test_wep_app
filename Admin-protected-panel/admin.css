@@ -1,0 +1,223 @@
+:root {
+  --primary-color: #6366f1;
+  --primary-hover: #4f46e5;
+  --bg-color: #0f172a;
+  --secondary-bg: #1e293b;
+  --text-color: #e2e8f0;
+  --text-muted: #94a3b8;
+  --danger-color: #ef4444;
+  --success-color: #22c55e;
+  --border-color: #334155;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+}
+
+body {
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  line-height: 1.6;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+header {
+  background-color: var(--secondary-bg);
+  padding: 1.5rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  text-align: center;
+  border-bottom: 1px solid var(--border-color);
+}
+
+header h1 {
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+  color: var(--primary-color);
+}
+
+header p {
+  color: var(--text-muted);
+  margin-bottom: 0.5rem;
+}
+
+#user-info {
+  font-size: 0.9rem;
+  padding: 0.5rem;
+  background-color: var(--bg-color);
+  border-radius: 0.5rem;
+  display: inline-block;
+  margin: 0.5rem 0;
+}
+
+main {
+  flex: 1;
+  padding: 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.form-section {
+  background-color: var(--secondary-bg);
+  padding: 2rem;
+  border-radius: 1rem;
+  margin-bottom: 2rem;
+  border: 1px solid var(--border-color);
+}
+
+input[type="text"],
+input[type="url"] {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+  border: 1px solid var(--border-color);
+  border-radius: 0.5rem;
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  font-size: 1rem;
+  transition: all 0.3s ease;
+}
+
+input[type="text"]:focus,
+input[type="url"]:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+}
+
+button {
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 0.5rem;
+  background-color: var(--primary-color);
+  color: white;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+button:hover:not(:disabled) {
+  background-color: var(--primary-hover);
+  transform: translateY(-1px);
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+#logout-btn {
+  background-color: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--text-color);
+}
+
+#logout-btn:hover {
+  background-color: var(--danger-color);
+  border-color: var(--danger-color);
+}
+
+.tools-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1.5rem;
+  margin-top: 2rem;
+}
+
+.tool-card {
+  background-color: var(--secondary-bg);
+  border-radius: 1rem;
+  padding: 1.5rem;
+  border: 1px solid var(--border-color);
+  transition: all 0.3s ease;
+}
+
+.tool-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.tool-card h3 {
+  color: var(--primary-color);
+  margin-bottom: 1rem;
+  font-size: 1.25rem;
+}
+
+.tool-card a {
+  color: var(--text-color);
+  text-decoration: none;
+  display: inline-block;
+  margin-bottom: 1rem;
+  padding: 0.5rem 1rem;
+  background-color: var(--bg-color);
+  border-radius: 0.5rem;
+  transition: all 0.3s ease;
+}
+
+.tool-card a:hover {
+  color: var(--primary-color);
+}
+
+.tool-card button {
+  margin-right: 0.5rem;
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+}
+
+.tool-card button:last-child {
+  background-color: var(--danger-color);
+}
+
+footer {
+  text-align: center;
+  padding: 2rem;
+  background-color: var(--secondary-bg);
+  color: var(--text-muted);
+  border-top: 1px solid var(--border-color);
+}
+
+@media (max-width: 768px) {
+  main {
+    padding: 1rem;
+  }
+  
+  .tools-container {
+    grid-template-columns: 1fr;
+  }
+  
+  .form-section {
+    padding: 1.5rem;
+  }
+}
+
+/* Loading and Error States */
+.tools-container:empty::after {
+  content: "جاري التحميل...";
+  text-align: center;
+  grid-column: 1 / -1;
+  padding: 2rem;
+  color: var(--text-muted);
+}
+
+.error-message {
+  color: var(--danger-color);
+  background-color: rgba(239, 68, 68, 0.1);
+  padding: 1rem;
+  border-radius: 0.5rem;
+  margin: 1rem 0;
+  text-align: center;
+}
+
+.success-message {
+  color: var(--success-color);
+  background-color: rgba(34, 197, 94, 0.1);
+  padding: 1rem;
+  border-radius: 0.5rem;
+  margin: 1rem 0;
+  text-align: center;
+} 

@@ -3,22 +3,25 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://www.gstatic.com 'unsafe-inline'; connect-src https://*.firebaseio.com https://*.googleapis.com; style-src 'self' 'unsafe-inline';">
+  <meta http-equiv="X-Content-Type-Options" content="nosniff">
+  <meta http-equiv="X-Frame-Options" content="DENY">
   <title>لوحة التحكم - الأدوات</title>
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="admin.css" />
 </head>
 <body>
   <header>
     <h1>🎛️ لوحة إدارة الأدوات</h1>
     <p>أضف أدوات جديدة إلى المتجر</p>
     <p id="user-info">جار التحقق من المستخدم...</p>
-    <button onclick="logout()">🔒 تسجيل الخروج</button>
+    <button onclick="logout()" id="logout-btn">🔒 تسجيل الخروج</button>
   </header>
 
   <main>
     <section class="form-section">
-      <input type="text" id="tool-name" placeholder="اسم الأداة" />
-      <input type="text" id="tool-link" placeholder="رابط الأداة" />
-      <button onclick="addTool()">➕ إضافة الأداة</button>
+      <input type="text" id="tool-name" placeholder="اسم الأداة" maxlength="100" />
+      <input type="url" id="tool-link" placeholder="رابط الأداة" pattern="https?://.+" />
+      <button onclick="addTool()" id="add-btn">➕ إضافة الأداة</button>
     </section>
 
     <section id="tools-preview" class="tools-container"></section>
@@ -35,106 +38,193 @@
     import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
     import { firebaseConfig } from './firebase-config.js';
 
+    // تأمين التطبيق
+    let isAuthenticated = false;
+    const ADMIN_EMAIL = "ossamapiip000@gmail.com";
+    const MAX_TOOL_NAME_LENGTH = 100;
+    const URL_PATTERN = /^https?:\/\/.+/i;
+
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
     const auth = getAuth(app);
 
     const userInfo = document.getElementById("user-info");
+    const addBtn = document.getElementById("add-btn");
+    const logoutBtn = document.getElementById("logout-btn");
+
+    // تأمين الواجهة
+    function secureUI(enabled) {
+      addBtn.disabled = !enabled;
+      document.getElementById("tool-name").disabled = !enabled;
+      document.getElementById("tool-link").disabled = !enabled;
+    }
+
+    // التحقق من صحة المدخلات
+    function validateInput(name, link) {
+      if (!name || !link) return { valid: false, error: "يرجى تعبئة جميع الحقول" };
+      if (name.length > MAX_TOOL_NAME_LENGTH) return { valid: false, error: "اسم الأداة طويل جداً" };
+      if (!URL_PATTERN.test(link)) return { valid: false, error: "الرابط غير صالح" };
+      return { valid: true };
+    }
+
+    // تنظيف المدخلات
+    function sanitizeString(str) {
+      return str.replace(/[<>&"']/g, char => {
+        const entities = {
+          '<': '&lt;',
+          '>': '&gt;',
+          '&': '&amp;',
+          '"': '&quot;',
+          "'": '&#39;'
+        };
+        return entities[char];
+      });
+    }
 
     // تحقق من تسجيل الدخول ومن صلاحيات الأدمن
     onAuthStateChanged(auth, user => {
       if (!user) {
-        alert("يرجى تسجيل الدخول أولاً.");
+        secureUI(false);
         window.location.href = "usr.html";
-      } else if (user.email !== "ossamapiip000@gmail.com") {
-        alert("🚫 ليس لديك صلاحيات الدخول إلى لوحة الإدارة.");
+        return;
+      }
+
+      if (user.email !== ADMIN_EMAIL) {
+        secureUI(false);
+        alert("🚫 ليس لديك صلاحيات الدخول إلى لوحة الإدارة");
         signOut(auth).then(() => {
           window.location.href = "usr.html";
         });
-      } else {
-        userInfo.textContent = `مرحبًا ${user.email}`;
-        loadPreview();
+        return;
       }
+
+      isAuthenticated = true;
+      secureUI(true);
+      userInfo.textContent = `مرحبًا ${sanitizeString(user.email)}`;
+      loadPreview();
     });
 
     // زر تسجيل الخروج
     window.logout = function () {
+      if (!isAuthenticated) return;
       signOut(auth).then(() => {
+        isAuthenticated = false;
         window.location.href = "usr.html";
       });
     };
 
     // إضافة أداة جديدة
     window.addTool = async function () {
+      if (!isAuthenticated) return;
+
       const name = document.getElementById("tool-name").value.trim();
       const link = document.getElementById("tool-link").value.trim();
-      if (!name || !link) return alert("يرجى تعبئة جميع الحقول.");
+      
+      const validation = validateInput(name, link);
+      if (!validation.valid) {
+        alert(validation.error);
+        return;
+      }
 
       try {
         await addDoc(collection(db, "tools"), {
-          name,
-          link,
-          added_at: serverTimestamp()
+          name: sanitizeString(name),
+          link: sanitizeString(link),
+          added_at: serverTimestamp(),
+          added_by: auth.currentUser.email
         });
-        alert("✅ تمت الإضافة بنجاح");
+        
         document.getElementById("tool-name").value = "";
         document.getElementById("tool-link").value = "";
-        loadPreview();
+        alert("✅ تمت الإضافة بنجاح");
+        await loadPreview();
       } catch (error) {
         console.error("فشل الإضافة:", error);
-        alert("❌ فشل في الإضافة");
+        alert("❌ فشل في الإضافة: " + error.message);
       }
     };
 
-    // 🗑️ حذف أداة
+    // حذف أداة
     window.deleteTool = async function (id) {
-      if (confirm("هل تريد حذف هذه الأداة؟")) {
-        await deleteDoc(doc(db, "tools", id));
-        loadPreview();
+      if (!isAuthenticated) return;
+      
+      try {
+        if (confirm("هل تريد حذف هذه الأداة؟")) {
+          await deleteDoc(doc(db, "tools", id));
+          await loadPreview();
+        }
+      } catch (error) {
+        console.error("فشل الحذف:", error);
+        alert("❌ فشل في الحذف: " + error.message);
       }
     };
 
-    // ✏️ تعديل أداة
+    // تعديل أداة
     window.editTool = async function (id, oldName, oldLink) {
+      if (!isAuthenticated) return;
+
       const newName = prompt("✏️ الاسم الجديد:", oldName);
       const newLink = prompt("🔗 الرابط الجديد:", oldLink);
-      if (!newName || !newLink) return;
+      
+      const validation = validateInput(newName, newLink);
+      if (!validation.valid) {
+        alert(validation.error);
+        return;
+      }
 
-      await updateDoc(doc(db, "tools", id), {
-        name: newName.trim(),
-        link: newLink.trim()
-      });
-      loadPreview();
+      try {
+        await updateDoc(doc(db, "tools", id), {
+          name: sanitizeString(newName.trim()),
+          link: sanitizeString(newLink.trim()),
+          updated_at: serverTimestamp(),
+          updated_by: auth.currentUser.email
+        });
+        await loadPreview();
+      } catch (error) {
+        console.error("فشل التعديل:", error);
+        alert("❌ فشل في التعديل: " + error.message);
+      }
     };
 
     // عرض الأدوات الحالية
     async function loadPreview() {
+      if (!isAuthenticated) return;
+
       const previewContainer = document.getElementById("tools-preview");
       previewContainer.innerHTML = "جارٍ التحميل...";
 
-      const q = query(collection(db, "tools"), orderBy("added_at", "desc"));
-      const snapshot = await getDocs(q);
+      try {
+        const q = query(collection(db, "tools"), orderBy("added_at", "desc"));
+        const snapshot = await getDocs(q);
 
-      previewContainer.innerHTML = "";
-      snapshot.forEach(docSnap => {
-  const tool = docSnap.data();
-  const id = docSnap.id;
+        if (snapshot.empty) {
+          previewContainer.innerHTML = "<p>لا توجد أدوات حالياً</p>";
+          return;
+        }
 
-  const safeName = encodeURIComponent(tool.name);
-  const safeLink = encodeURIComponent(tool.link);
+        previewContainer.innerHTML = "";
+        snapshot.forEach(docSnap => {
+          const tool = docSnap.data();
+          const id = docSnap.id;
 
-  const div = document.createElement("div");
-  div.className = "tool-card";
-  div.innerHTML = `
-    <h3>${tool.name}</h3>
-    <a href="${tool.link}" target="_blank">رابط الأداة</a><br/>
-    <button onclick="editTool('${id}', decodeURIComponent('${safeName}'), decodeURIComponent('${safeLink}'))">✏️ تعديل</button>
-    <button onclick="deleteTool('${id}')">🗑️ حذف</button>
-  `;
-  previewContainer.appendChild(div);
-});
-
+          const div = document.createElement("div");
+          div.className = "tool-card";
+          div.innerHTML = `
+            <h3>${sanitizeString(tool.name)}</h3>
+            <a href="${sanitizeString(tool.link)}" target="_blank" rel="noopener noreferrer">رابط الأداة</a><br/>
+            <button onclick="editTool('${id}', '${sanitizeString(tool.name)}', '${sanitizeString(tool.link)}')">✏️ تعديل</button>
+            <button onclick="deleteTool('${id}')">🗑️ حذف</button>
+          `;
+          previewContainer.appendChild(div);
+        });
+      } catch (error) {
+        console.error("فشل تحميل الأدوات:", error);
+        previewContainer.innerHTML = "❌ حدث خطأ أثناء تحميل الأدوات";
+      }
     }
+
+    // تأمين الواجهة مبدئياً
+    secureUI(false);
   </script>
 </body>
 </html>
