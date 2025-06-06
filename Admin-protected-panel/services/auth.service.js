@@ -48,18 +48,36 @@ class AuthService {
     // تسجيل الدخول
     async login(email, password) {
         try {
-            // التحقق من وجود المستخدم أولاً
-            const usersRef = collection(db, AUTH_CONFIG.FIREBASE_COLLECTIONS.USERS);
-            const q = query(usersRef, where("email", "==", email.toLowerCase()));
-            const querySnapshot = await getDocs(q);
+            // محاولة تسجيل الدخول أولاً
+            const userCredential = await signInWithEmailAndPassword(auth, email, password);
+            const user = userCredential.user;
 
-            if (querySnapshot.empty) {
+            // التحقق من وجود المستخدم في Firestore
+            const userDoc = await getDoc(doc(db, AUTH_CONFIG.FIREBASE_COLLECTIONS.USERS, user.uid));
+            
+            if (!userDoc.exists()) {
+                // إذا كان هذا أول مستخدم، قم بإنشاء حساب مسؤول
+                const isFirstUser = !(await getDoc(doc(db, AUTH_CONFIG.FIREBASE_COLLECTIONS.SYSTEM, 'config'))).exists();
+                
+                if (isFirstUser) {
+                    await this._createFirstAdmin(user);
+                    return {
+                        user,
+                        isAdmin: true
+                    };
+                }
+                
+                // إذا لم يكن المستخدم موجوداً في النظام
+                await this.logout();
                 throw new Error(AUTH_CONFIG.ERROR_MESSAGES.USER_NOT_FOUND);
             }
 
-            // محاولة تسجيل الدخول
-            const userCredential = await signInWithEmailAndPassword(auth, email, password);
-            const user = userCredential.user;
+            // التحقق من أن الحساب غير معطل
+            const userData = userDoc.data();
+            if (userData.disabled) {
+                await this.logout();
+                throw new Error(AUTH_CONFIG.ERROR_MESSAGES.ACCOUNT_DISABLED);
+            }
 
             // التحقق من صلاحيات المسؤول
             const isAdmin = await this._checkAdminStatus(user);
@@ -77,7 +95,14 @@ class AuthService {
             };
         } catch (error) {
             console.error('Login error:', error);
-            throw this._handleAuthError(error);
+            
+            // إذا كان الخطأ من Firebase Auth
+            if (error.code) {
+                throw this._handleAuthError(error);
+            }
+            
+            // إذا كان الخطأ من التحقق الإضافي
+            throw error;
         }
     }
 
@@ -101,20 +126,11 @@ class AuthService {
             const adminDoc = await getDoc(adminRef);
             
             if (!adminDoc.exists()) {
-                // التحقق مما إذا كان هذا أول مستخدم في النظام
-                const systemRef = doc(db, AUTH_CONFIG.FIREBASE_COLLECTIONS.SYSTEM, 'config');
-                const systemDoc = await getDoc(systemRef);
-
-                if (!systemDoc.exists()) {
-                    // إنشاء أول مسؤول في النظام
-                    await this._createFirstAdmin(user);
-                    return true;
-                }
                 return false;
             }
 
             const adminData = adminDoc.data();
-            return !adminData.disabled; // التحقق من أن الحساب غير معطل
+            return !adminData.disabled;
         } catch (error) {
             console.error('Admin check error:', error);
             return false;
@@ -124,9 +140,11 @@ class AuthService {
     // إنشاء أول مسؤول في النظام
     async _createFirstAdmin(user) {
         try {
+            const batch = db.batch();
+
             // إنشاء وثيقة تكوين النظام
             const systemRef = doc(db, AUTH_CONFIG.FIREBASE_COLLECTIONS.SYSTEM, 'config');
-            await setDoc(systemRef, {
+            batch.set(systemRef, {
                 firstAdminEmail: user.email,
                 createdAt: serverTimestamp(),
                 systemVersion: '1.0.0'
@@ -134,7 +152,7 @@ class AuthService {
 
             // إنشاء وثيقة المسؤول
             const adminRef = doc(db, AUTH_CONFIG.FIREBASE_COLLECTIONS.ADMINS, user.uid);
-            await setDoc(adminRef, {
+            batch.set(adminRef, {
                 email: user.email.toLowerCase(),
                 displayName: user.displayName || 'المسؤول الرئيسي',
                 createdAt: serverTimestamp(),
@@ -147,7 +165,7 @@ class AuthService {
 
             // إنشاء وثيقة المستخدم
             const userRef = doc(db, AUTH_CONFIG.FIREBASE_COLLECTIONS.USERS, user.uid);
-            await setDoc(userRef, {
+            batch.set(userRef, {
                 email: user.email.toLowerCase(),
                 displayName: user.displayName || 'المسؤول الرئيسي',
                 createdAt: serverTimestamp(),
@@ -156,6 +174,8 @@ class AuthService {
                 disabled: false
             });
 
+            // تنفيذ جميع العمليات معاً
+            await batch.commit();
             return true;
         } catch (error) {
             console.error('Error creating first admin:', error);
@@ -166,15 +186,16 @@ class AuthService {
     // تحديث آخر تسجيل دخول
     async _updateLastLogin(userId) {
         try {
+            const batch = db.batch();
+            const timestamp = serverTimestamp();
+
             const adminRef = doc(db, AUTH_CONFIG.FIREBASE_COLLECTIONS.ADMINS, userId);
-            await updateDoc(adminRef, {
-                lastLoginAt: serverTimestamp()
-            });
+            batch.update(adminRef, { lastLoginAt: timestamp });
 
             const userRef = doc(db, AUTH_CONFIG.FIREBASE_COLLECTIONS.USERS, userId);
-            await updateDoc(userRef, {
-                lastLoginAt: serverTimestamp()
-            });
+            batch.update(userRef, { lastLoginAt: timestamp });
+
+            await batch.commit();
         } catch (error) {
             console.error('Error updating last login:', error);
         }
