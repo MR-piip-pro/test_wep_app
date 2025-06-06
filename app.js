@@ -7,7 +7,7 @@ import {
   orderBy, 
   limit
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-import { firebaseConfig } from './config/config.js';
+import { firebaseConfig } from './firebase-config.js';
 
 // تهيئة Firebase
 console.log('بدء تهيئة Firebase...');
