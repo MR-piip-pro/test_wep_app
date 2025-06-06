@@ -1,10 +1,14 @@
 :root {
-  --primary-color: #4CAF50;
-  --secondary-color: #45a049;
-  --text-color: #333;
-  --bg-color: #f9f9f9;
-  --card-bg: #ffffff;
-  --shadow: 0 2px 5px rgba(0,0,0,0.1);
+  --primary-color: #2196f3;
+  --secondary-color: #1976d2;
+  --background-color: #f5f5f5;
+  --card-background: #ffffff;
+  --text-color: #333333;
+  --border-color: #e0e0e0;
+  --error-color: #f44336;
+  --success-color: #4caf50;
+  --shadow-color: rgba(0, 0, 0, 0.1);
+  --transition-speed: 0.3s;
 }
 
 * {
@@ -14,10 +18,11 @@
 }
 
 body {
-  font-family: 'Segoe UI', 'Tahoma', sans-serif;
-  background-color: var(--bg-color);
-  color: var(--text-color);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   line-height: 1.6;
+  color: var(--text-color);
+  background-color: var(--background-color);
+  direction: rtl;
 }
 
 /* Header Styles */
@@ -28,188 +33,335 @@ header {
 }
 
 .navbar {
+  background-color: var(--card-background);
+  padding: 1rem;
+  box-shadow: 0 2px 4px var(--shadow-color);
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0 2rem;
-  max-width: 1200px;
-  margin: 0 auto;
+  flex-wrap: wrap;
+  gap: 1rem;
+  position: sticky;
+  top: 0;
+  z-index: 100;
 }
 
 .logo h1 {
-  font-size: 1.8rem;
+  font-size: 1.5rem;
+  color: var(--primary-color);
   margin: 0;
 }
 
 .search-bar {
   display: flex;
   gap: 0.5rem;
+  flex: 1;
+  max-width: 600px;
+  margin: 0 auto;
 }
 
 .search-bar input {
-  padding: 0.5rem 1rem;
-  border: none;
-  border-radius: 25px;
-  width: 300px;
+  flex: 1;
+  padding: 0.75rem;
+  border: 2px solid var(--border-color);
+  border-radius: 8px;
   font-size: 1rem;
+  transition: border-color var(--transition-speed);
+}
+
+.search-bar input:focus {
+  outline: none;
+  border-color: var(--primary-color);
 }
 
 .search-bar button {
-  background: white;
+  padding: 0.75rem 1.5rem;
+  background-color: var(--primary-color);
+  color: white;
   border: none;
-  border-radius: 50%;
-  width: 40px;
-  height: 40px;
+  border-radius: 8px;
   cursor: pointer;
-  transition: transform 0.2s;
+  transition: background-color var(--transition-speed);
 }
 
 .search-bar button:hover {
-  transform: scale(1.05);
+  background-color: var(--secondary-color);
 }
 
 .hero-section {
   text-align: center;
-  padding: 2rem 1rem;
+  padding: 3rem 1rem;
+  background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+  color: white;
+}
+
+.hero-section h2 {
+  font-size: 2.5rem;
+  margin-bottom: 1rem;
+}
+
+.hero-section p {
+  font-size: 1.2rem;
+  opacity: 0.9;
 }
 
 /* Filters */
 .filters {
   display: flex;
-  justify-content: center;
   gap: 1rem;
   padding: 1rem;
-  margin: 1rem 0;
+  background-color: var(--card-background);
+  border-radius: 8px;
+  margin: 1rem;
+  box-shadow: 0 2px 4px var(--shadow-color);
 }
 
 .filters select {
-  padding: 0.5rem 1rem;
-  border: 1px solid #ddd;
-  border-radius: 5px;
-  background: white;
+  padding: 0.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  font-size: 1rem;
   cursor: pointer;
 }
 
 /* تنسيق حاوية الأدوات الرئيسية */
 .tools-container {
-  width: 100%;
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 2rem;
+  padding: 1rem;
 }
 
 /* تنسيق شبكة الأدوات */
 .tools-grid {
-  display: grid !important;
-  grid-template-columns: repeat(3, 1fr) !important;
-  gap: 2rem !important;
-  width: 100%;
-  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
 }
 
 /* تنسيق بطاقة الأداة */
 .tool-card {
-  width: 100%;
-  background: var(--card-bg);
-  border-radius: 10px;
+  background-color: var(--card-background);
+  border-radius: 12px;
   padding: 1.5rem;
-  box-shadow: var(--shadow);
-  transition: transform 0.2s;
-  text-align: right;
+  box-shadow: 0 2px 8px var(--shadow-color);
+  transition: transform var(--transition-speed), box-shadow var(--transition-speed);
   display: flex;
   flex-direction: column;
-  height: 100%;
-  margin: 0;
+  gap: 1rem;
 }
 
 .tool-card:hover {
-  transform: translateY(-5px);
+  transform: translateY(-4px);
+  box-shadow: 0 4px 12px var(--shadow-color);
 }
 
 .tool-card h2 {
-  font-size: 1.3rem;
-  margin-bottom: 1rem;
   color: var(--primary-color);
+  font-size: 1.25rem;
+  margin-bottom: 0.5rem;
 }
 
 .tool-card p {
+  color: var(--text-color);
+  opacity: 0.8;
   margin-bottom: 1rem;
-  color: #666;
-  flex-grow: 1;
 }
 
 .tool-card .tags {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.5rem;
   margin-bottom: 1rem;
-  flex-wrap: wrap;
 }
 
 .tool-card .tag {
-  background: #f0f0f0;
-  padding: 0.2rem 0.8rem;
-  border-radius: 15px;
-  font-size: 0.9rem;
+  background-color: var(--background-color);
+  color: var(--text-color);
+  padding: 0.25rem 0.75rem;
+  border-radius: 16px;
+  font-size: 0.875rem;
 }
 
-.tool-card a {
-  display: inline-block;
+.tool-card .tool-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: auto;
+}
+
+.tool-card .category-badge {
   background-color: var(--primary-color);
   color: white;
-  padding: 0.7rem 1.5rem;
-  border-radius: 25px;
-  text-decoration: none;
-  transition: background-color 0.2s;
-  text-align: center;
+  padding: 0.25rem 0.75rem;
+  border-radius: 16px;
+  font-size: 0.875rem;
 }
 
-.tool-card a:hover {
+.tool-card .download-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background-color: var(--success-color);
+  color: white;
+  text-decoration: none;
+  border-radius: 8px;
+  transition: background-color var(--transition-speed);
+}
+
+.tool-card .download-btn:hover {
+  background-color: #388e3c;
+}
+
+/* زر تحميل المزيد */
+.load-more-btn {
+  display: block;
+  margin: 2rem auto;
+  padding: 1rem 2rem;
+  background-color: var(--primary-color);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: background-color var(--transition-speed);
+}
+
+.load-more-btn:hover {
   background-color: var(--secondary-color);
 }
 
-/* Loading Spinner */
+/* التحميل والأخطاء */
 .loading-spinner {
   text-align: center;
-  padding: 2rem;
+  padding: 3rem;
 }
 
 .loading-spinner i {
-  font-size: 2rem;
+  font-size: 3rem;
   color: var(--primary-color);
   margin-bottom: 1rem;
 }
 
+.error {
+  text-align: center;
+  padding: 3rem;
+  background-color: var(--card-background);
+  border-radius: 12px;
+  box-shadow: 0 2px 8px var(--shadow-color);
+  margin: 1rem;
+}
+
+.error i {
+  font-size: 3rem;
+  color: var(--error-color);
+  margin-bottom: 1rem;
+}
+
+.error p {
+  color: var(--error-color);
+  margin-bottom: 1rem;
+}
+
+.retry-btn {
+  padding: 0.75rem 1.5rem;
+  background-color: var(--primary-color);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: background-color var(--transition-speed);
+}
+
+.retry-btn:hover {
+  background-color: var(--secondary-color);
+}
+
+/* تحسين عرض حالة عدم وجود أدوات */
+.no-tools {
+  text-align: center;
+  padding: 3rem;
+}
+
+.no-tools i {
+  font-size: 3rem;
+  color: var(--text-color);
+  opacity: 0.5;
+  margin-bottom: 1rem;
+}
+
+/* التجاوب مع الشاشات المختلفة */
+@media (max-width: 768px) {
+  .navbar {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .search-bar {
+    width: 100%;
+  }
+
+  .hero-section h2 {
+    font-size: 2rem;
+  }
+
+  .filters {
+    flex-direction: column;
+  }
+
+  .tools-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* تحسينات الوصول */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+  }
+}
+
+/* دعم الوضع المظلم */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background-color: #121212;
+    --card-background: #1e1e1e;
+    --text-color: #ffffff;
+    --border-color: #333333;
+    --shadow-color: rgba(0, 0, 0, 0.2);
+  }
+}
+
 /* Footer */
 footer {
-  background: #333;
-  color: white;
-  padding: 3rem 0 1rem;
+  background-color: var(--card-background);
+  padding: 3rem 1rem;
   margin-top: 3rem;
+  box-shadow: 0 -2px 4px var(--shadow-color);
 }
 
 .footer-content {
+  max-width: 1200px;
+  margin: 0 auto;
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
   gap: 2rem;
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 2rem;
 }
 
 .footer-section h3 {
+  color: var(--primary-color);
   margin-bottom: 1rem;
 }
 
 .social-links {
   display: flex;
   gap: 1rem;
-  margin-top: 1rem;
 }
 
 .social-links a {
-  color: white;
+  color: var(--text-color);
   font-size: 1.5rem;
-  transition: color 0.2s;
+  transition: color var(--transition-speed);
 }
 
 .social-links a:hover {
@@ -218,9 +370,9 @@ footer {
 
 .footer-bottom {
   text-align: center;
-  padding-top: 2rem;
   margin-top: 2rem;
-  border-top: 1px solid #444;
+  padding-top: 2rem;
+  border-top: 1px solid var(--border-color);
 }
 
 /* تنسيقات التصفح بين الصفحات */
@@ -255,65 +407,4 @@ footer {
 .page-info {
   font-size: 1rem;
   color: var(--text-color);
-}
-
-/* تحسين أزرار إعادة المحاولة */
-.retry-btn {
-  background: var(--primary-color);
-  color: white;
-  border: none;
-  border-radius: 25px;
-  padding: 0.7rem 1.5rem;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin: 1rem auto;
-  transition: background-color 0.2s;
-}
-
-.retry-btn:hover {
-  background: var(--secondary-color);
-}
-
-/* تحسين عرض رسائل الخطأ */
-.error {
-  text-align: center;
-  padding: 2rem;
-}
-
-.error i {
-  font-size: 3rem;
-  color: #dc3545;
-  margin-bottom: 1rem;
-}
-
-.error-details {
-  color: #666;
-  margin: 1rem 0;
-}
-
-/* تحسين عرض حالة عدم وجود أدوات */
-.no-tools {
-  text-align: center;
-  padding: 3rem 1rem;
-}
-
-.no-tools i {
-  font-size: 3rem;
-  color: #666;
-  margin-bottom: 1rem;
-}
-
-/* التجاوب مع الشاشات المختلفة */
-@media (max-width: 992px) {
-  .tools-grid {
-    grid-template-columns: repeat(2, 1fr) !important;
-  }
-}
-
-@media (max-width: 576px) {
-  .tools-grid {
-    grid-template-columns: 1fr !important;
-  }
 }
