@@ -20,7 +20,6 @@
         placeholder="البريد الإلكتروني" 
         required 
         dir="ltr"
-        value="ossamapiip000@gmail.com"
       />
       <input 
         type="password" 
@@ -32,6 +31,7 @@
       />
       <button type="submit" id="login-btn">تسجيل الدخول</button>
       <p id="error" class="error-message"></p>
+      <p id="attempts" class="attempts-message"></p>
     </form>
   </main>
 
@@ -50,7 +50,12 @@
 
     // استيراد Firebase SDK
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+    import { 
+      getAuth, 
+      signInWithEmailAndPassword, 
+      onAuthStateChanged,
+      fetchSignInMethodsForEmail 
+    } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
     try {
       // تهيئة Firebase
@@ -61,23 +66,70 @@
       const loginForm = document.getElementById('login-form');
       const loginBtn = document.getElementById('login-btn');
       const errorElement = document.getElementById('error');
+      const attemptsElement = document.getElementById('attempts');
+
+      // إعدادات محاولات تسجيل الدخول
+      const MAX_LOGIN_ATTEMPTS = 100;
+      const LOCKOUT_DURATION = 15 * 60 * 1000;
+      let loginAttempts = parseInt(localStorage.getItem('loginAttempts') || '0');
+      let lockoutTime = parseInt(localStorage.getItem('lockoutTime') || '0');
+
+      // التحقق من حالة القفل
+      function checkLockoutStatus() {
+        const now = Date.now();
+        if (lockoutTime > now) {
+          const remainingMinutes = Math.ceil((lockoutTime - now) / 60000);
+          showError(`تم تجاوز عدد المحاولات المسموح بها. يرجى الانتظار ${remainingMinutes} دقيقة`);
+          toggleFormState(true);
+          return false;
+        }
+        if (loginAttempts >= MAX_LOGIN_ATTEMPTS) {
+          loginAttempts = 0;
+          localStorage.setItem('loginAttempts', '0');
+          localStorage.removeItem('lockoutTime');
+        }
+        updateAttemptsDisplay();
+        return true;
+      }
+
+      function updateAttemptsDisplay() {
+        const remainingAttempts = MAX_LOGIN_ATTEMPTS - loginAttempts;
+        attemptsElement.textContent = `المحاولات المتبقية: ${remainingAttempts}`;
+      }
 
       // التحقق من حالة تسجيل الدخول
       onAuthStateChanged(auth, user => {
         if (user) {
           console.log('User is signed in:', user.email);
-          window.location.href = "./admin.html";
+          // التحقق من صلاحيات المستخدم
+          if (user.email && isAdminEmail(user.email)) {
+            loginAttempts = 0;
+            localStorage.setItem('loginAttempts', '0');
+            localStorage.removeItem('lockoutTime');
+            window.location.href = "./admin.html";
+          } else {
+            // تسجيل خروج المستخدم غير المصرح له
+            auth.signOut().then(() => {
+              showError('ليس لديك صلاحية الوصول إلى لوحة الإدارة');
+              toggleFormState(false);
+            });
+          }
         }
       });
 
-      // إظهار رسالة الخطأ
+      // التحقق من صلاحيات المستخدم
+      function isAdminEmail(email) {
+        // يمكنك إضافة المزيد من عناوين البريد الإلكتروني للمسؤولين هنا
+        const adminEmails = ['ossamapiip000@gmail.com'];
+        return adminEmails.includes(email.toLowerCase());
+      }
+
       function showError(message) {
         console.error('Error:', message);
         errorElement.textContent = message;
         errorElement.style.display = message ? 'block' : 'none';
       }
 
-      // تغيير حالة النموذج
       function toggleFormState(disabled) {
         loginBtn.disabled = disabled;
         loginBtn.classList.toggle('loading', disabled);
@@ -89,29 +141,59 @@
       window.handleLogin = async function(event) {
         event.preventDefault();
         
-        const email = loginForm.email.value.trim();
+        if (!checkLockoutStatus()) {
+          return;
+        }
+
+        const email = loginForm.email.value.trim().toLowerCase();
         const password = loginForm.password.value;
 
-        console.log('Attempting login for:', email);
-
-        // التحقق من المدخلات
         if (!email || !password) {
           showError('يرجى إدخال البريد الإلكتروني وكلمة المرور');
           return;
         }
 
-        // تعطيل النموذج أثناء المعالجة
         toggleFormState(true);
         showError('');
 
         try {
-          console.log('Signing in...');
+          // التحقق من وجود البريد الإلكتروني
+          const signInMethods = await fetchSignInMethodsForEmail(auth, email);
+          
+          if (signInMethods.length === 0) {
+            showError('البريد الإلكتروني غير مسجل في النظام');
+            toggleFormState(false);
+            loginAttempts++;
+            localStorage.setItem('loginAttempts', loginAttempts.toString());
+            updateAttemptsDisplay();
+            return;
+          }
+
+          // التحقق من صلاحيات المستخدم
+          if (!isAdminEmail(email)) {
+            showError('ليس لديك صلاحية الوصول إلى لوحة الإدارة');
+            toggleFormState(false);
+            return;
+          }
+
+          // محاولة تسجيل الدخول
           const userCredential = await signInWithEmailAndPassword(auth, email, password);
           console.log('Login successful:', userCredential.user.email);
+          
         } catch (error) {
           console.error('Login error:', error.code, error.message);
-          let errorMessage;
+          loginAttempts++;
+          localStorage.setItem('loginAttempts', loginAttempts.toString());
           
+          if (loginAttempts >= MAX_LOGIN_ATTEMPTS) {
+            lockoutTime = Date.now() + LOCKOUT_DURATION;
+            localStorage.setItem('lockoutTime', lockoutTime.toString());
+            showError(`تم تجاوز عدد المحاولات المسموح بها. يرجى الانتظار 15 دقيقة`);
+            toggleFormState(true);
+            return;
+          }
+
+          let errorMessage;
           switch (error.code) {
             case 'auth/invalid-email':
               errorMessage = 'البريد الإلكتروني غير صالح';
@@ -119,14 +201,8 @@
             case 'auth/user-disabled':
               errorMessage = 'تم تعطيل هذا الحساب';
               break;
-            case 'auth/user-not-found':
-              errorMessage = 'البريد الإلكتروني غير مسجل';
-              break;
             case 'auth/wrong-password':
               errorMessage = 'كلمة المرور غير صحيحة';
-              break;
-            case 'auth/too-many-requests':
-              errorMessage = 'تم تجاوز عدد المحاولات المسموح به. يرجى المحاولة لاحقاً';
               break;
             case 'auth/network-request-failed':
               errorMessage = 'فشل الاتصال بالخادم. تحقق من اتصال الإنترنت';
@@ -137,8 +213,14 @@
           
           showError(errorMessage);
           toggleFormState(false);
+          updateAttemptsDisplay();
         }
       };
+
+      // التحقق من حالة القفل عند تحميل الصفحة
+      checkLockoutStatus();
+      updateAttemptsDisplay();
+
     } catch (initError) {
       console.error('Firebase initialization error:', initError);
       showError('حدث خطأ في تهيئة النظام. يرجى المحاولة مرة أخرى لاحقاً.');
