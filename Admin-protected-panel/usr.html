@@ -60,7 +60,8 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { 
       getAuth, 
-      signInWithEmailAndPassword, 
+      signInWithEmailAndPassword,
+      createUserWithEmailAndPassword,
       onAuthStateChanged,
       fetchSignInMethodsForEmail 
     } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
@@ -69,7 +70,9 @@
       collection,
       query,
       where,
-      getDocs
+      getDocs,
+      addDoc,
+      serverTimestamp
     } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
     // تكوين Firebase مباشرة
@@ -118,6 +121,27 @@
         } catch (error) {
           console.error('Error checking admin permissions:', error);
           return false;
+        }
+      }
+
+      // إنشاء حساب مسؤول جديد
+      async function createAdminAccount(email, password) {
+        try {
+          // إنشاء المستخدم في Authentication
+          const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+          const user = userCredential.user;
+
+          // إضافة المستخدم إلى مجموعة المسؤولين في Firestore
+          await addDoc(collection(db, 'admins'), {
+            email: email.toLowerCase(),
+            role: 'admin',
+            createdAt: serverTimestamp()
+          });
+
+          return user;
+        } catch (error) {
+          console.error('Error creating admin account:', error);
+          throw error;
         }
       }
 
@@ -226,12 +250,21 @@
           const signInMethods = await fetchSignInMethodsForEmail(auth, email);
           
           if (signInMethods.length === 0) {
-            showError('البريد الإلكتروني غير مسجل في النظام');
-            enableForm();
-            loginAttempts++;
-            localStorage.setItem('loginAttempts', loginAttempts.toString());
-            updateAttemptsDisplay();
-            return;
+            // إذا لم يكن المستخدم موجوداً، نحاول إنشاء حساب جديد
+            try {
+              await createAdminAccount(email, password);
+              console.log('Admin account created successfully');
+              // سيتم التعامل مع تسجيل الدخول تلقائياً من خلال onAuthStateChanged
+              return;
+            } catch (createError) {
+              if (createError.code === 'auth/email-already-in-use') {
+                showError('البريد الإلكتروني مستخدم بالفعل');
+              } else {
+                showError('فشل في إنشاء الحساب. يرجى المحاولة مرة أخرى');
+              }
+              enableForm();
+              return;
+            }
           }
 
           // محاولة تسجيل الدخول
