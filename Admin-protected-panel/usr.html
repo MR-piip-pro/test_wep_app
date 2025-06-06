@@ -12,10 +12,26 @@
 <body>
   <main>
     <h1>🔐 تسجيل الدخول إلى لوحة الإدارة</h1>
-    <form id="login-form" onsubmit="login(event)">
-      <input type="email" id="email" placeholder="البريد الإلكتروني" required pattern="[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$" />
-      <input type="password" id="password" placeholder="كلمة المرور" required minlength="6" />
-      <button type="submit" id="login-btn">دخول</button>
+    <form id="login-form" onsubmit="handleLogin(event)">
+      <input 
+        type="email" 
+        id="email" 
+        name="email"
+        placeholder="البريد الإلكتروني" 
+        required 
+        pattern="[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
+        autocomplete="email"
+      />
+      <input 
+        type="password" 
+        id="password" 
+        name="password"
+        placeholder="كلمة المرور" 
+        required 
+        minlength="6"
+        autocomplete="current-password"
+      />
+      <button type="submit" id="login-btn">تسجيل الدخول</button>
       <p id="error" class="error-message"></p>
     </form>
   </main>
@@ -26,122 +42,88 @@
     import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
     import { firebaseConfig } from './firebase-config.js';
 
+    // تهيئة Firebase
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     
+    // عناصر الواجهة
+    const loginForm = document.getElementById('login-form');
+    const loginBtn = document.getElementById('login-btn');
+    const errorElement = document.getElementById('error');
+
     // التحقق من حالة تسجيل الدخول
     onAuthStateChanged(auth, user => {
       if (user) {
+        console.log('User is signed in:', user.email);
         window.location.href = "admin.html";
       }
     });
 
-    // منع محاولات تسجيل الدخول المتكررة
-    const MAX_LOGIN_ATTEMPTS = 5;
-    const LOCKOUT_TIME = 15 * 60 * 1000; // 15 دقيقة
-    let loginAttempts = 0;
-    let lastLoginAttempt = 0;
-
-    // تنظيف المدخلات
-    function sanitizeString(str) {
-      return str.replace(/[<>&"']/g, char => {
-        const entities = {
-          '<': '&lt;',
-          '>': '&gt;',
-          '&': '&amp;',
-          '"': '&quot;',
-          "'": '&#39;'
-        };
-        return entities[char];
-      });
-    }
-
-    // التحقق من صحة المدخلات
-    function validateInput(email, password) {
-      const emailPattern = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-      if (!email || !password) return { valid: false, error: "يرجى إدخال البريد وكلمة المرور" };
-      if (!emailPattern.test(email)) return { valid: false, error: "البريد الإلكتروني غير صالح" };
-      if (password.length < 6) return { valid: false, error: "كلمة المرور يجب أن تكون 6 أحرف على الأقل" };
-      return { valid: true };
-    }
-
-    // عرض رسالة الخطأ
+    // إظهار رسالة الخطأ
     function showError(message) {
-      const errorElement = document.getElementById("error");
-      errorElement.textContent = sanitizeString(message);
-      errorElement.style.display = message ? "block" : "none";
+      errorElement.textContent = message;
+      errorElement.style.display = message ? 'block' : 'none';
     }
 
-    // تعطيل/تفعيل نموذج تسجيل الدخول
-    function toggleForm(enabled) {
-      const form = document.getElementById("login-form");
-      const loginBtn = document.getElementById("login-btn");
-      const inputs = form.getElementsByTagName("input");
-      
+    // تغيير حالة النموذج
+    function toggleFormState(disabled) {
+      loginBtn.disabled = disabled;
+      loginBtn.classList.toggle('loading', disabled);
+      const inputs = loginForm.getElementsByTagName('input');
       for (let input of inputs) {
-        input.disabled = !enabled;
+        input.disabled = disabled;
       }
-      loginBtn.disabled = !enabled;
     }
 
-    // تسجيل الدخول
-    window.login = async function(event) {
+    // معالجة تسجيل الدخول
+    window.handleLogin = async function(event) {
       event.preventDefault();
       
-      // التحقق من تجاوز عدد المحاولات
-      const now = Date.now();
-      if (loginAttempts >= MAX_LOGIN_ATTEMPTS) {
-        const timeLeft = LOCKOUT_TIME - (now - lastLoginAttempt);
-        if (timeLeft > 0) {
-          showError(`تم تجاوز عدد المحاولات المسموح بها. يرجى المحاولة بعد ${Math.ceil(timeLeft / 60000)} دقيقة`);
-          return;
-        }
-        loginAttempts = 0;
-      }
+      const email = loginForm.email.value.trim();
+      const password = loginForm.password.value;
 
-      const email = document.getElementById("email").value.trim();
-      const password = document.getElementById("password").value;
-      
-      const validation = validateInput(email, password);
-      if (!validation.valid) {
-        showError(validation.error);
+      // التحقق من المدخلات
+      if (!email || !password) {
+        showError('يرجى إدخال البريد الإلكتروني وكلمة المرور');
         return;
       }
 
-      toggleForm(false);
-      showError("");
+      // تعطيل النموذج أثناء المعالجة
+      toggleFormState(true);
+      showError('');
 
       try {
-        await signInWithEmailAndPassword(auth, email, password);
-        // تسجيل الدخول ناجح - سيتم التوجيه تلقائياً بواسطة onAuthStateChanged
+        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        console.log('Login successful:', userCredential.user.email);
+        // سيتم التوجيه تلقائياً بواسطة onAuthStateChanged
       } catch (error) {
-        console.error(error);
-        loginAttempts++;
-        lastLoginAttempt = now;
-        
+        console.error('Login error:', error);
         let errorMessage;
+        
         switch (error.code) {
           case 'auth/invalid-email':
-            errorMessage = "البريد الإلكتروني غير صالح";
+            errorMessage = 'البريد الإلكتروني غير صالح';
             break;
           case 'auth/user-disabled':
-            errorMessage = "تم تعطيل هذا الحساب";
+            errorMessage = 'تم تعطيل هذا الحساب';
             break;
           case 'auth/user-not-found':
+            errorMessage = 'البريد الإلكتروني غير مسجل';
+            break;
           case 'auth/wrong-password':
-            errorMessage = "البريد الإلكتروني أو كلمة المرور غير صحيحة";
+            errorMessage = 'كلمة المرور غير صحيحة';
+            break;
+          case 'auth/too-many-requests':
+            errorMessage = 'تم تجاوز عدد المحاولات المسموح به. يرجى المحاولة لاحقاً';
             break;
           default:
-            errorMessage = "حدث خطأ أثناء تسجيل الدخول";
+            errorMessage = 'حدث خطأ أثناء تسجيل الدخول';
         }
         
         showError(errorMessage);
-        toggleForm(true);
+        toggleFormState(false);
       }
     };
-
-    // تأمين الصفحة مبدئياً
-    showError("");
   </script>
 </body>
 </html>
