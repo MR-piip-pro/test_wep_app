@@ -11,54 +11,287 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <link rel="stylesheet" href="admin.css" />
   <style>
-    /* Notification Styles */
-    .notification {
-      position: fixed;
-      top: 20px;
-      right: 20px;
-      padding: 15px 25px;
-      border-radius: 8px;
-      color: white;
-      font-weight: 500;
-      z-index: 1000;
-      animation: slideIn 0.3s ease-out;
+    :root {
+      --primary-color: #1976d2;
+      --primary-dark: #1565c0;
+      --primary-light: #e3f2fd;
+      --background-primary: #ffffff;
+      --background-secondary: #f5f5f5;
+      --text-primary: #333333;
+      --text-secondary: #666666;
+      --border-color: #e0e0e0;
+      --divider-color: #eeeeee;
+      --shadow-color: rgba(0, 0, 0, 0.1);
+      --success-color: #4caf50;
+      --error-color: #f44336;
+      --warning-color: #ff9800;
+      --info-color: #2196f3;
+      --transition: all 0.3s ease;
+      --border-radius: 4px;
     }
 
-    .notification.success {
-      background-color: var(--success-color);
+    [data-theme="dark"] {
+      --primary-color: #64b5f6;
+      --primary-dark: #42a5f5;
+      --primary-light: #1a237e;
+      --background-primary: #121212;
+      --background-secondary: #1e1e1e;
+      --text-primary: #ffffff;
+      --text-secondary: #b0b0b0;
+      --border-color: #333333;
+      --divider-color: #2d2d2d;
+      --shadow-color: rgba(0, 0, 0, 0.3);
     }
 
-    .notification.error {
-      background-color: var(--error-color);
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
     }
 
-    @keyframes slideIn {
-      from {
-        transform: translateX(100%);
-        opacity: 0;
-      }
-      to {
-        transform: translateX(0);
-        opacity: 1;
-      }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background-color: var(--background-secondary);
+      color: var(--text-primary);
+      line-height: 1.6;
     }
 
-    /* Category Card Styles */
-    .category-card {
-      background-color: var(--card-background);
+    .admin-container {
+      display: grid;
+      grid-template-columns: 250px 1fr;
+      min-height: 100vh;
+    }
+
+    .sidebar {
+      background-color: var(--background-primary);
       padding: 1.5rem;
-      border-radius: 12px;
-      box-shadow: 0 2px 8px var(--shadow-color);
+      box-shadow: 2px 0 4px var(--shadow-color);
+      display: flex;
+      flex-direction: column;
     }
 
-    .category-card h3 {
-      margin-bottom: 0.5rem;
+    .sidebar-header {
+      margin-bottom: 2rem;
+    }
+
+    .sidebar-header h2 {
+      color: var(--primary-color);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .sidebar-nav {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      flex: 1;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.75rem 1rem;
+      color: var(--text-secondary);
+      background: none;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      text-align: right;
+      width: 100%;
+    }
+
+    .nav-item:hover,
+    .nav-item.active {
+      background-color: var(--primary-light);
       color: var(--primary-color);
     }
 
-    .category-card p {
+    .nav-item i {
+      font-size: 1.2rem;
+    }
+
+    .sidebar-footer {
+      margin-top: auto;
+      padding-top: 1rem;
+    }
+
+    .logout-btn {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      width: 100%;
+      padding: 0.75rem 1rem;
+      color: white;
+      background-color: var(--error-color);
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .logout-btn:hover {
+      background-color: #d32f2f;
+    }
+
+    .main-content {
+      padding: 2rem;
+      background-color: var(--background-secondary);
+    }
+
+    .content-section {
+      display: none;
+      animation: fadeIn 0.3s ease;
+    }
+
+    .content-section.active {
+      display: block;
+    }
+
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2rem;
+    }
+
+    .section-header h1 {
+      color: var(--text-primary);
+    }
+
+    .primary-btn {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.75rem 1.5rem;
+      background-color: var(--primary-color);
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .primary-btn:hover {
+      background-color: var(--primary-dark);
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+
+    .stat-card {
+      background-color: var(--background-primary);
+      padding: 1.5rem;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px var(--shadow-color);
+      text-align: center;
+    }
+
+    .stat-card i {
+      font-size: 2rem;
+      color: var(--primary-color);
       margin-bottom: 1rem;
-      color: var(--text-color);
+    }
+
+    .stat-card h3 {
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .stat-card p {
+      color: var(--text-primary);
+      font-size: 1.5rem;
+      font-weight: bold;
+    }
+
+    .tools-filters {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    .tools-filters input,
+    .tools-filters select {
+      padding: 0.5rem;
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      font-size: 1rem;
+    }
+
+    .tools-filters input {
+      flex: 1;
+    }
+
+    .tools-table-container {
+      background-color: var(--background-primary);
+      border-radius: 8px;
+      box-shadow: 0 2px 4px var(--shadow-color);
+      overflow: hidden;
+    }
+
+    .tools-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .tools-table th,
+    .tools-table td {
+      padding: 1rem;
+      text-align: right;
+      border-bottom: 1px solid var(--divider-color);
+    }
+
+    .tools-table th {
+      background-color: var(--background-secondary);
+      font-weight: 600;
+      color: var(--text-secondary);
+    }
+
+    .tool-actions {
+      display: flex;
+      gap: 0.5rem;
+      justify-content: flex-end;
+    }
+
+    .categories-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+      gap: 1rem;
+    }
+
+    .category-card {
+      background-color: var(--background-primary);
+      border-radius: 8px;
+      box-shadow: 0 2px 4px var(--shadow-color);
+      overflow: hidden;
+    }
+
+    .category-image {
+      width: 100%;
+      height: 150px;
+      object-fit: cover;
+    }
+
+    .category-content {
+      padding: 1rem;
+    }
+
+    .category-content h3 {
+      margin-bottom: 0.5rem;
+      color: var(--text-primary);
+    }
+
+    .category-content p {
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+      margin-bottom: 1rem;
     }
 
     .category-actions {
@@ -73,38 +306,80 @@
       border: none;
       border-radius: 4px;
       cursor: pointer;
-      transition: background-color 0.3s;
+      transition: all 0.3s ease;
     }
 
     .edit-btn {
-      background-color: var(--primary-color);
-      color: white;
+      background-color: var(--primary-light);
+      color: var(--primary-color);
     }
 
     .delete-btn {
-      background-color: var(--danger-color);
+      background-color: var(--error-color);
       color: white;
     }
 
     .edit-btn:hover {
-      background-color: var(--primary-dark);
+      background-color: var(--primary-color);
+      color: white;
     }
 
     .delete-btn:hover {
       background-color: #d32f2f;
     }
 
-    /* Tool Modal Styles */
-    .modal form {
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: rgba(0, 0, 0, 0.5);
+      z-index: 1000;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .modal-content {
+      background-color: var(--background-primary);
+      border-radius: 8px;
+      box-shadow: 0 4px 6px var(--shadow-color);
+      width: 90%;
+      max-width: 500px;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+
+    .modal-header {
+      padding: 1rem;
+      border-bottom: 1px solid var(--divider-color);
       display: flex;
-      flex-direction: column;
-      gap: 1rem;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .modal-header h2 {
+      color: var(--text-primary);
+    }
+
+    .close-modal {
+      background: none;
+      border: none;
+      font-size: 1.5rem;
+      color: var(--text-secondary);
+      cursor: pointer;
+    }
+
+    .form-group {
+      margin-bottom: 1rem;
+      padding: 0 1rem;
     }
 
     .form-group label {
       display: block;
       margin-bottom: 0.5rem;
-      font-weight: 500;
+      color: var(--text-secondary);
     }
 
     .form-group input,
@@ -115,13 +390,56 @@
       border: 1px solid var(--border-color);
       border-radius: 4px;
       font-size: 1rem;
-      background-color: var(--input-bg);
-      color: var(--text-color);
+      background-color: var(--background-primary);
+      color: var(--text-primary);
     }
 
     .form-group textarea {
       min-height: 100px;
       resize: vertical;
+    }
+
+    .upload-group {
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+    }
+
+    .file-input {
+      display: none;
+    }
+
+    .file-label {
+      padding: 0.75rem 1rem;
+      background-color: var(--background-secondary);
+      border-radius: 4px;
+      cursor: pointer;
+      color: var(--text-secondary);
+    }
+
+    .or-separator {
+      color: var(--text-secondary);
+    }
+
+    .modal-footer {
+      padding: 1rem;
+      border-top: 1px solid var(--divider-color);
+      display: flex;
+      justify-content: flex-end;
+      gap: 1rem;
+    }
+
+    .current-image {
+      margin-top: 1rem;
+      max-width: 200px;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .current-image img {
+      width: 100%;
+      height: auto;
+      display: block;
     }
   </style>
 </head>
@@ -241,23 +559,16 @@
         <div class="settings-form">
           <div class="form-group">
             <label for="site-name">اسم الموقع</label>
-            <input type="text" id="site-name" value="متجر الأدوات">
-          </div>
-          <div class="form-group">
-            <label for="admin-email">البريد الإلكتروني للمسؤول</label>
-            <input type="email" id="admin-email" value="ossamapiip000@gmail.com" readonly>
+            <input type="text" id="site-name" name="site-name">
           </div>
           <div class="form-group">
             <label for="theme">المظهر</label>
-            <select id="theme">
+            <select id="theme" name="theme">
               <option value="light">فاتح</option>
               <option value="dark">داكن</option>
-              <option value="auto">تلقائي</option>
             </select>
           </div>
-          <button id="save-settings" class="primary-btn">
-            <i class="fas fa-save"></i> حفظ الإعدادات
-          </button>
+          <button id="save-settings" class="primary-btn">حفظ الإعدادات</button>
         </div>
       </section>
     </main>
@@ -304,37 +615,6 @@
     </div>
   </div>
 
-  <!-- Add Category Modal -->
-  <div id="add-category-modal" class="modal">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h2>إضافة فئة جديدة</h2>
-        <button class="close-modal">&times;</button>
-      </div>
-      <form id="add-category-form">
-        <div class="form-group">
-          <label for="category-name">اسم الفئة</label>
-          <input type="text" id="category-name" name="category-name" required>
-        </div>
-        <div class="form-group">
-          <label for="category-description">الوصف</label>
-          <textarea id="category-description" name="category-description" required></textarea>
-        </div>
-        <div class="form-group">
-          <label for="category-image">صورة الفئة</label>
-          <div class="upload-group">
-            <input type="file" id="category-image" name="category-image" class="file-input" accept="image/*">
-            <label for="category-image" id="category-image-label" class="file-label">اختر صورة</label>
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="secondary-btn close-modal">إلغاء</button>
-          <button type="submit" class="primary-btn">إضافة الفئة</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
   <!-- Edit Tool Modal -->
   <div id="edit-tool-modal" class="modal">
     <div class="modal-content">
@@ -372,6 +652,37 @@
         <div class="modal-footer">
           <button type="button" class="secondary-btn close-modal">إلغاء</button>
           <button type="submit" class="primary-btn">حفظ التغييرات</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Add Category Modal -->
+  <div id="add-category-modal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>إضافة فئة جديدة</h2>
+        <button class="close-modal">&times;</button>
+      </div>
+      <form id="add-category-form">
+        <div class="form-group">
+          <label for="category-name">اسم الفئة</label>
+          <input type="text" id="category-name" name="category-name" required>
+        </div>
+        <div class="form-group">
+          <label for="category-description">الوصف</label>
+          <textarea id="category-description" name="category-description" required></textarea>
+        </div>
+        <div class="form-group">
+          <label for="category-image">صورة الفئة</label>
+          <div class="upload-group">
+            <input type="file" id="category-image" name="category-image" class="file-input" accept="image/*">
+            <label for="category-image" id="category-image-label" class="file-label">اختر صورة</label>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="secondary-btn close-modal">إلغاء</button>
+          <button type="submit" class="primary-btn">إضافة الفئة</button>
         </div>
       </form>
     </div>
@@ -435,4 +746,3 @@
   <script type="module" src="admin.js"></script>
 </body>
 </html>
-

@@ -52,6 +52,10 @@ const toolSearch = document.getElementById('tool-search');
 const categoryFilter = document.getElementById('category-filter');
 const addToolForm = document.getElementById('add-tool-form');
 const addCategoryForm = document.getElementById('add-category-form');
+const editToolForm = document.getElementById('edit-tool-form');
+const editCategoryForm = document.getElementById('edit-category-form');
+const addToolBtn = document.getElementById('add-tool-btn');
+const addCategoryBtn = document.getElementById('add-category-btn');
 const siteNameInput = document.getElementById('site-name');
 const themeSelect = document.getElementById('theme');
 const logoutBtn = document.getElementById('logout-btn');
@@ -61,6 +65,18 @@ const totalToolsElement = document.getElementById('total-tools');
 const totalDownloadsElement = document.getElementById('total-downloads');
 const totalUsersElement = document.getElementById('total-users');
 const totalCategoriesElement = document.getElementById('total-categories');
+
+// File Upload Function
+async function uploadFile(file, path) {
+    try {
+        const storageRef = ref(storage, path);
+        const snapshot = await uploadBytes(storageRef, file);
+        return await getDownloadURL(snapshot.ref);
+    } catch (error) {
+        console.error('Error uploading file:', error);
+        throw error;
+    }
+}
 
 // Authentication Check
 async function checkAdminPermissions(user) {
@@ -108,28 +124,6 @@ async function loadTools() {
     }
 }
 
-// File Upload Functions
-async function uploadFile(file, path) {
-    try {
-        const storageRef = ref(storage, path);
-        const snapshot = await uploadBytes(storageRef, file);
-        return await getDownloadURL(snapshot.ref);
-    } catch (error) {
-        console.error('Error uploading file:', error);
-        throw error;
-    }
-}
-
-async function deleteFile(path) {
-    try {
-        const storageRef = ref(storage, path);
-        await deleteObject(storageRef);
-    } catch (error) {
-        console.error('Error deleting file:', error);
-    }
-}
-
-// Enhanced Tool Management
 async function addTool(event) {
     event.preventDefault();
     const formData = new FormData(addToolForm);
@@ -182,28 +176,73 @@ async function editTool(toolId) {
 
         const tool = toolDoc.data();
         
-        // تعبئة النموذج بالبيانات الحالية
-        document.getElementById('tool-name').value = tool.name;
-        document.getElementById('tool-description').value = tool.description;
-        document.getElementById('tool-category').value = tool.category;
-        document.getElementById('tool-tags').value = tool.tags.join(', ');
+        // Fill form with current data
+        document.getElementById('edit-tool-id').value = toolId;
+        document.getElementById('edit-tool-name').value = tool.name;
+        document.getElementById('edit-tool-description').value = tool.description;
+        document.getElementById('edit-tool-category').value = tool.category;
+        document.getElementById('edit-tool-tags').value = tool.tags.join(', ');
         
         if (tool.isFile) {
-            document.getElementById('tool-file-label').textContent = 'الملف الحالي';
+            document.getElementById('edit-tool-file-label').textContent = 'الملف الحالي';
         } else {
-            document.getElementById('tool-link').value = tool.link;
+            document.getElementById('edit-tool-link').value = tool.link;
         }
-
-        // تحويل نموذج الإضافة إلى نموذج التعديل
-        const form = document.getElementById('add-tool-form');
-        form.dataset.editId = toolId;
-        document.querySelector('#add-tool-modal .modal-header h2').textContent = 'تعديل الأداة';
-        document.querySelector('#add-tool-modal .modal-footer button[type="submit"]').textContent = 'حفظ التعديلات';
         
-        openModal('add-tool-modal');
+        openModal('edit-tool-modal');
     } catch (error) {
         console.error('Error loading tool for edit:', error);
         showNotification('حدث خطأ في تحميل بيانات الأداة', 'error');
+    }
+}
+
+async function updateTool(event) {
+    event.preventDefault();
+    const formData = new FormData(editToolForm);
+    const toolId = document.getElementById('edit-tool-id').value;
+    
+    try {
+        let fileUrl = '';
+        const file = formData.get('edit-tool-file');
+        
+        if (file && file.size > 0) {
+            const filePath = `tools/${Date.now()}_${file.name}`;
+            fileUrl = await uploadFile(file, filePath);
+            
+            // Delete old file if exists
+            const toolRef = doc(db, 'tools', toolId);
+            const toolDoc = await getDoc(toolRef);
+            if (toolDoc.exists() && toolDoc.data().isFile) {
+                await deleteFile(toolDoc.data().link);
+            }
+        }
+
+        const toolData = {
+            name: formData.get('edit-tool-name'),
+            description: formData.get('edit-tool-description'),
+            category: formData.get('edit-tool-category'),
+            tags: formData.get('edit-tool-tags').split(',').map(tag => tag.trim()),
+            updatedAt: Timestamp.now(),
+            updatedBy: auth.currentUser.email
+        };
+
+        if (fileUrl || formData.get('edit-tool-link')) {
+            toolData.link = fileUrl || formData.get('edit-tool-link');
+            toolData.isFile = !!fileUrl;
+        }
+
+        await updateDoc(doc(db, 'tools', toolId), toolData);
+        
+        // Log activity
+        await logActivity('edit_tool', toolData.name);
+        
+        closeModal('edit-tool-modal');
+        editToolForm.reset();
+        loadTools();
+        showNotification('تم تحديث الأداة بنجاح', 'success');
+    } catch (error) {
+        console.error('Error updating tool:', error);
+        showNotification('حدث خطأ في تحديث الأداة', 'error');
     }
 }
 
@@ -223,14 +262,14 @@ async function deleteTool(toolId) {
 
         const tool = toolDoc.data();
         
-        // حذف الملف من التخزين إذا كان موجوداً
-        if (tool.isFile && tool.link) {
-            const fileUrl = new URL(tool.link);
-            const filePath = decodeURIComponent(fileUrl.pathname.split('/o/')[1].split('?')[0]);
-            await deleteFile(filePath);
+        // Delete file if exists
+        if (tool.isFile) {
+            await deleteFile(tool.link);
         }
 
         await deleteDoc(toolRef);
+        
+        // Log activity
         await logActivity('delete_tool', tool.name);
         
         loadTools();
@@ -285,7 +324,6 @@ async function loadCategories() {
     }
 }
 
-// Enhanced Category Management
 async function addCategory(event) {
     event.preventDefault();
     const formData = new FormData(addCategoryForm);
@@ -334,24 +372,68 @@ async function editCategory(categoryId) {
 
         const category = categoryDoc.data();
         
-        // تعبئة النموذج بالبيانات الحالية
-        document.getElementById('category-name').value = category.name;
-        document.getElementById('category-description').value = category.description;
+        // Fill form with current data
+        document.getElementById('edit-category-id').value = categoryId;
+        document.getElementById('edit-category-name').value = category.name;
+        document.getElementById('edit-category-description').value = category.description;
         
         if (category.imageUrl) {
-            document.getElementById('category-image-label').textContent = 'الصورة الحالية';
+            document.getElementById('edit-category-image-label').textContent = 'الصورة الحالية';
+            const currentImage = document.getElementById('current-category-image');
+            currentImage.innerHTML = `<img src="${category.imageUrl}" alt="${category.name}">`;
         }
-
-        // تحويل نموذج الإضافة إلى نموذج التعديل
-        const form = document.getElementById('add-category-form');
-        form.dataset.editId = categoryId;
-        document.querySelector('#add-category-modal .modal-header h2').textContent = 'تعديل الفئة';
-        document.querySelector('#add-category-modal .modal-footer button[type="submit"]').textContent = 'حفظ التعديلات';
         
-        openModal('add-category-modal');
+        openModal('edit-category-modal');
     } catch (error) {
         console.error('Error loading category for edit:', error);
         showNotification('حدث خطأ في تحميل بيانات الفئة', 'error');
+    }
+}
+
+async function updateCategory(event) {
+    event.preventDefault();
+    const formData = new FormData(editCategoryForm);
+    const categoryId = document.getElementById('edit-category-id').value;
+    
+    try {
+        let imageUrl = '';
+        const image = formData.get('edit-category-image');
+        
+        if (image && image.size > 0) {
+            const imagePath = `categories/${Date.now()}_${image.name}`;
+            imageUrl = await uploadFile(image, imagePath);
+            
+            // Delete old image if exists
+            const categoryRef = doc(db, 'categories', categoryId);
+            const categoryDoc = await getDoc(categoryRef);
+            if (categoryDoc.exists() && categoryDoc.data().imageUrl) {
+                await deleteFile(categoryDoc.data().imageUrl);
+            }
+        }
+
+        const categoryData = {
+            name: formData.get('edit-category-name'),
+            description: formData.get('edit-category-description'),
+            updatedAt: Timestamp.now(),
+            updatedBy: auth.currentUser.email
+        };
+
+        if (imageUrl) {
+            categoryData.imageUrl = imageUrl;
+        }
+
+        await updateDoc(doc(db, 'categories', categoryId), categoryData);
+        
+        // Log activity
+        await logActivity('edit_category', categoryData.name);
+        
+        closeModal('edit-category-modal');
+        editCategoryForm.reset();
+        loadCategories();
+        showNotification('تم تحديث الفئة بنجاح', 'success');
+    } catch (error) {
+        console.error('Error updating category:', error);
+        showNotification('حدث خطأ في تحديث الفئة', 'error');
     }
 }
 
@@ -371,24 +453,14 @@ async function deleteCategory(categoryId) {
 
         const category = categoryDoc.data();
         
-        // حذف الصورة من التخزين إذا كانت موجودة
+        // Delete image if exists
         if (category.imageUrl) {
-            const imageUrl = new URL(category.imageUrl);
-            const imagePath = decodeURIComponent(imageUrl.pathname.split('/o/')[1].split('?')[0]);
-            await deleteFile(imagePath);
-        }
-
-        // التحقق من وجود أدوات مرتبطة بهذه الفئة
-        const toolsRef = collection(db, 'tools');
-        const q = query(toolsRef, where('category', '==', category.name));
-        const toolsSnapshot = await getDocs(q);
-        
-        if (!toolsSnapshot.empty) {
-            showNotification('لا يمكن حذف الفئة لأنها تحتوي على أدوات', 'error');
-            return;
+            await deleteFile(category.imageUrl);
         }
 
         await deleteDoc(categoryRef);
+        
+        // Log activity
         await logActivity('delete_category', category.name);
         
         loadCategories();
@@ -399,34 +471,13 @@ async function deleteCategory(categoryId) {
     }
 }
 
-// Download Tracking
-async function trackDownload(toolId) {
+// File Management
+async function deleteFile(path) {
     try {
-        const toolRef = doc(db, 'tools', toolId);
-        const toolDoc = await getDoc(toolRef);
-        
-        if (!toolDoc.exists()) {
-            return;
-        }
-
-        const tool = toolDoc.data();
-        
-        // Increment downloads
-        await updateDoc(toolRef, {
-            downloads: (tool.downloads || 0) + 1
-        });
-
-        // Log download
-        await addDoc(collection(db, 'downloads'), {
-            toolId: toolId,
-            toolName: tool.name,
-            downloadedAt: Timestamp.now(),
-            downloadedBy: auth.currentUser?.email || 'anonymous'
-        });
-
-        loadDashboardStats();
+        const storageRef = ref(storage, path);
+        await deleteObject(storageRef);
     } catch (error) {
-        console.error('Error tracking download:', error);
+        console.error('Error deleting file:', error);
     }
 }
 
@@ -439,12 +490,15 @@ async function logActivity(action, details) {
             timestamp: Timestamp.now(),
             user: auth.currentUser.email
         });
+        
+        // Refresh dashboard stats and activity
+        loadDashboardStats();
     } catch (error) {
         console.error('Error logging activity:', error);
     }
 }
 
-// Enhanced Dashboard Statistics
+// Dashboard Statistics
 async function loadDashboardStats() {
     try {
         // Get tools count and total downloads
@@ -499,6 +553,38 @@ async function loadDashboardStats() {
     }
 }
 
+// Download Tracking
+async function trackDownload(toolId) {
+    try {
+        const toolRef = doc(db, 'tools', toolId);
+        const toolDoc = await getDoc(toolRef);
+        
+        if (!toolDoc.exists()) {
+            return;
+        }
+
+        const tool = toolDoc.data();
+        
+        // Increment downloads
+        await updateDoc(toolRef, {
+            downloads: (tool.downloads || 0) + 1
+        });
+
+        // Log download
+        await addDoc(collection(db, 'downloads'), {
+            toolId: toolId,
+            toolName: tool.name,
+            downloadedAt: Timestamp.now(),
+            downloadedBy: auth.currentUser?.email || 'anonymous'
+        });
+
+        // Refresh dashboard stats
+        loadDashboardStats();
+    } catch (error) {
+        console.error('Error tracking download:', error);
+    }
+}
+
 // Utility Functions
 function showNotification(message, type) {
     const notification = document.createElement('div');
@@ -538,7 +624,8 @@ function formatAction(action) {
         delete_tool: 'حذف أداة',
         add_category: 'إضافة فئة',
         edit_category: 'تعديل فئة',
-        delete_category: 'حذف فئة'
+        delete_category: 'حذف فئة',
+        download_tool: 'تحميل أداة'
     };
     return actions[action] || action;
 }
@@ -577,9 +664,38 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Add event listeners
+    // Form submit handlers
     addToolForm.addEventListener('submit', addTool);
+    editToolForm.addEventListener('submit', updateTool);
     addCategoryForm.addEventListener('submit', addCategory);
+    editCategoryForm.addEventListener('submit', updateCategory);
+
+    // Modal open buttons
+    addToolBtn.addEventListener('click', () => {
+        document.querySelector('#add-tool-modal .modal-header h2').textContent = 'إضافة أداة جديدة';
+        document.querySelector('#add-tool-modal .modal-footer button[type="submit"]').textContent = 'إضافة الأداة';
+        addToolForm.reset();
+        openModal('add-tool-modal');
+    });
+
+    addCategoryBtn.addEventListener('click', () => {
+        document.querySelector('#add-category-modal .modal-header h2').textContent = 'إضافة فئة جديدة';
+        document.querySelector('#add-category-modal .modal-footer button[type="submit"]').textContent = 'إضافة الفئة';
+        addCategoryForm.reset();
+        openModal('add-category-modal');
+    });
+
+    // Modal close buttons
+    document.querySelectorAll('.close-modal').forEach(button => {
+        button.addEventListener('click', () => {
+            const modal = button.closest('.modal');
+            if (modal) {
+                closeModal(modal.id);
+            }
+        });
+    });
+
+    // Logout button
     logoutBtn.addEventListener('click', async () => {
         try {
             await signOut(auth);
@@ -627,12 +743,9 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('category-image-label').textContent = fileName;
     });
 
-    // Download tracking
-    document.addEventListener('click', async (e) => {
-        if (e.target.matches('.download-btn')) {
-            const toolId = e.target.dataset.toolId;
-            await trackDownload(toolId);
-        }
+    document.getElementById('edit-category-image').addEventListener('change', (e) => {
+        const fileName = e.target.files[0]?.name || 'اختر صورة';
+        document.getElementById('edit-category-image-label').textContent = fileName;
     });
 
     // Toggle sections
