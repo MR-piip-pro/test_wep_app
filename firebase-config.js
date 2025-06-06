@@ -1,5 +1,6 @@
+
 export const firebaseConfig = {
-  apiKey: "AIzaSyB3bBsR5j6CHYaXkrIIF_g4ZvWGYd3WTiQ",
+  apiKey: "",
   authDomain: "mr-piip-pro.firebaseapp.com",
   projectId: "mr-piip-pro",
   storageBucket: "mr-piip-pro.appspot.com",
