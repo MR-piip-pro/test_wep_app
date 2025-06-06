@@ -7,36 +7,52 @@
   <meta http-equiv="X-Content-Type-Options" content="nosniff">
   <meta http-equiv="X-Frame-Options" content="DENY">
   <meta name="referrer" content="no-referrer">
-  <title>تسجيل الدخول</title>
+  <title>تسجيل الدخول - لوحة الإدارة</title>
   <link rel="stylesheet" href="usr.css" />
 </head>
 <body>
   <main>
-    <h1>🔐 تسجيل الدخول إلى لوحة الإدارة</h1>
-    <form id="login-form" onsubmit="handleLogin(event)">
-      <input 
-        type="email" 
-        id="email" 
-        name="email"
-        placeholder="البريد الإلكتروني" 
-        required 
-        dir="ltr"
-        autocomplete="username"
-      />
-      <input 
-        type="password" 
-        id="password" 
-        name="password"
-        placeholder="كلمة المرور" 
-        required 
-        dir="ltr"
-        autocomplete="current-password"
-        minlength="6"
-      />
-      <button type="submit" id="login-btn">تسجيل الدخول</button>
-      <p id="error" class="error-message"></p>
-      <p id="attempts" class="attempts-message"></p>
-    </form>
+    <div class="login-container">
+      <div class="login-box">
+        <h1>🔐 تسجيل الدخول إلى لوحة الإدارة</h1>
+        <form id="login-form" onsubmit="handleLogin(event)">
+          <div class="form-group">
+            <label for="email">البريد الإلكتروني</label>
+            <input 
+              type="email" 
+              id="email" 
+              name="email"
+              required 
+              dir="ltr"
+              autocomplete="username"
+              maxlength="100"
+            >
+          </div>
+          <div class="form-group">
+            <label for="password">كلمة المرور</label>
+            <div class="password-input">
+              <input 
+                type="password" 
+                id="password" 
+                name="password"
+                required 
+                dir="ltr"
+                autocomplete="current-password"
+                minlength="6"
+              >
+              <button type="button" id="toggle-password" aria-label="إظهار/إخفاء كلمة المرور">
+                <svg class="eye-icon" viewBox="0 0 24 24" width="24" height="24">
+                  <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+          <button type="submit" id="login-btn">تسجيل الدخول</button>
+          <div id="error" class="error-message" role="alert"></div>
+          <div id="attempts" class="attempts-message" role="status"></div>
+        </form>
+      </div>
+    </div>
   </main>
 
   <!-- Firebase SDK -->
@@ -68,9 +84,12 @@
       
       // عناصر الواجهة
       const loginForm = document.getElementById('login-form');
+      const emailInput = document.getElementById('email');
+      const passwordInput = document.getElementById('password');
       const loginBtn = document.getElementById('login-btn');
       const errorElement = document.getElementById('error');
       const attemptsElement = document.getElementById('attempts');
+      const togglePasswordBtn = document.getElementById('toggle-password');
 
       // إعدادات محاولات تسجيل الدخول
       const MAX_LOGIN_ATTEMPTS = 100;
@@ -78,13 +97,52 @@
       let loginAttempts = parseInt(localStorage.getItem('loginAttempts') || '0');
       let lockoutTime = parseInt(localStorage.getItem('lockoutTime') || '0');
 
+      // التحقق من حالة تسجيل الدخول
+      onAuthStateChanged(auth, async (user) => {
+        if (user) {
+          try {
+            const token = await user.getIdToken();
+            const email = user.email.toLowerCase();
+            
+            if (email === 'ossamapiip000@gmail.com') {
+              console.log('Admin logged in successfully');
+              loginAttempts = 0;
+              localStorage.setItem('loginAttempts', '0');
+              localStorage.removeItem('lockoutTime');
+              
+              // تأمين عملية التوجيه
+              const adminUrl = new URL('./admin.html', window.location.href).href;
+              window.location.replace(adminUrl);
+            } else {
+              console.log('Unauthorized access attempt');
+              await auth.signOut();
+              showError('ليس لديك صلاحية الوصول إلى لوحة الإدارة');
+              enableForm();
+            }
+          } catch (error) {
+            console.error('Auth state error:', error);
+            showError('حدث خطأ في التحقق من الصلاحيات');
+            enableForm();
+          }
+        }
+      });
+
+      // إظهار/إخفاء كلمة المرور
+      togglePasswordBtn.addEventListener('click', () => {
+        const type = passwordInput.type === 'password' ? 'text' : 'password';
+        passwordInput.type = type;
+        togglePasswordBtn.setAttribute('aria-label', 
+          type === 'password' ? 'إظهار كلمة المرور' : 'إخفاء كلمة المرور'
+        );
+      });
+
       // التحقق من حالة القفل
       function checkLockoutStatus() {
         const now = Date.now();
         if (lockoutTime > now) {
           const remainingMinutes = Math.ceil((lockoutTime - now) / 60000);
           showError(`تم تجاوز عدد المحاولات المسموح بها. يرجى الانتظار ${remainingMinutes} دقيقة`);
-          toggleFormState(true);
+          disableForm();
           return false;
         }
         if (loginAttempts >= MAX_LOGIN_ATTEMPTS) {
@@ -101,54 +159,24 @@
         attemptsElement.textContent = `المحاولات المتبقية: ${remainingAttempts}`;
       }
 
-      // التحقق من حالة تسجيل الدخول
-      onAuthStateChanged(auth, async user => {
-        if (user) {
-          try {
-            // التحقق من صلاحيات المستخدم
-            const token = await user.getIdToken();
-            const email = user.email.toLowerCase();
-            
-            if (email && isAdminEmail(email)) {
-              console.log('Admin logged in successfully');
-              loginAttempts = 0;
-              localStorage.setItem('loginAttempts', '0');
-              localStorage.removeItem('lockoutTime');
-              
-              // تأمين عملية التوجيه
-              const adminUrl = new URL('./admin.html', window.location.href).href;
-              window.location.replace(adminUrl);
-            } else {
-              console.log('Unauthorized access attempt');
-              await auth.signOut();
-              showError('ليس لديك صلاحية الوصول إلى لوحة الإدارة');
-              toggleFormState(false);
-            }
-          } catch (error) {
-            console.error('Auth state error:', error);
-            showError('حدث خطأ في التحقق من الصلاحيات');
-            toggleFormState(false);
-          }
-        }
-      });
-
-      // التحقق من صلاحيات المستخدم
-      function isAdminEmail(email) {
-        const adminEmails = ['ossamapiip000@gmail.com'];
-        return adminEmails.includes(email.toLowerCase());
-      }
-
       function showError(message) {
         console.error('Error:', message);
         errorElement.textContent = message;
         errorElement.style.display = message ? 'block' : 'none';
       }
 
-      function toggleFormState(disabled) {
-        loginBtn.disabled = disabled;
-        loginBtn.classList.toggle('loading', disabled);
-        loginForm.email.disabled = disabled;
-        loginForm.password.disabled = disabled;
+      function disableForm() {
+        loginBtn.disabled = true;
+        emailInput.disabled = true;
+        passwordInput.disabled = true;
+        togglePasswordBtn.disabled = true;
+      }
+
+      function enableForm() {
+        loginBtn.disabled = false;
+        emailInput.disabled = false;
+        passwordInput.disabled = false;
+        togglePasswordBtn.disabled = false;
       }
 
       // معالجة تسجيل الدخول
@@ -159,15 +187,15 @@
           return;
         }
 
-        const email = loginForm.email.value.trim().toLowerCase();
-        const password = loginForm.password.value;
+        const email = emailInput.value.trim().toLowerCase();
+        const password = passwordInput.value;
 
         if (!email || !password) {
           showError('يرجى إدخال البريد الإلكتروني وكلمة المرور');
           return;
         }
 
-        toggleFormState(true);
+        disableForm();
         showError('');
 
         try {
@@ -176,7 +204,7 @@
           
           if (signInMethods.length === 0) {
             showError('البريد الإلكتروني غير مسجل في النظام');
-            toggleFormState(false);
+            enableForm();
             loginAttempts++;
             localStorage.setItem('loginAttempts', loginAttempts.toString());
             updateAttemptsDisplay();
@@ -184,9 +212,9 @@
           }
 
           // التحقق من صلاحيات المستخدم
-          if (!isAdminEmail(email)) {
+          if (email !== 'ossamapiip000@gmail.com') {
             showError('ليس لديك صلاحية الوصول إلى لوحة الإدارة');
-            toggleFormState(false);
+            enableForm();
             return;
           }
 
@@ -202,7 +230,7 @@
             lockoutTime = Date.now() + LOCKOUT_DURATION;
             localStorage.setItem('lockoutTime', lockoutTime.toString());
             showError(`تم تجاوز عدد المحاولات المسموح بها. يرجى الانتظار 15 دقيقة`);
-            toggleFormState(true);
+            disableForm();
             return;
           }
 
@@ -228,7 +256,7 @@
           }
           
           showError(errorMessage);
-          toggleFormState(false);
+          enableForm();
           updateAttemptsDisplay();
         }
       };
