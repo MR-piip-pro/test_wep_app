@@ -657,6 +657,9 @@ document.addEventListener('DOMContentLoaded', () => {
             themeSelect.value = savedTheme;
             document.documentElement.setAttribute('data-theme', savedTheme);
             
+            // Initialize navigation
+            initializeNavigation();
+            
         } catch (error) {
             console.error('Error checking admin status:', error);
             await signOut(auth);
@@ -748,26 +751,6 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('edit-category-image-label').textContent = fileName;
     });
 
-    // Toggle sections
-    const navItems = document.querySelectorAll('.nav-item');
-    const sections = document.querySelectorAll('.content-section');
-
-    navItems.forEach(item => {
-        item.addEventListener('click', () => {
-            const targetSection = item.dataset.section;
-            
-            navItems.forEach(navItem => navItem.classList.remove('active'));
-            item.classList.add('active');
-            
-            sections.forEach(section => {
-                section.classList.remove('active');
-                if (section.id === targetSection) {
-                    section.classList.add('active');
-                }
-            });
-        });
-    });
-
     // Save settings
     document.getElementById('save-settings').addEventListener('click', () => {
         const theme = themeSelect.value;
@@ -780,6 +763,30 @@ document.addEventListener('DOMContentLoaded', () => {
         showNotification('تم حفظ الإعدادات بنجاح', 'success');
     });
 });
+
+// Initialize Navigation
+function initializeNavigation() {
+    const navItems = document.querySelectorAll('.nav-item');
+    const sections = document.querySelectorAll('.content-section');
+
+    // Show dashboard by default
+    document.getElementById('dashboard').classList.add('active');
+    navItems[0].classList.add('active');
+
+    navItems.forEach(item => {
+        item.addEventListener('click', () => {
+            const targetSection = item.dataset.section;
+            
+            // Remove active class from all nav items and sections
+            navItems.forEach(navItem => navItem.classList.remove('active'));
+            sections.forEach(section => section.classList.remove('active'));
+            
+            // Add active class to clicked nav item and corresponding section
+            item.classList.add('active');
+            document.getElementById(targetSection).classList.add('active');
+        });
+    });
+}
 
 // Expose functions to window object for onclick handlers
 window.editTool = editTool;
