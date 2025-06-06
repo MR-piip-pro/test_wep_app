@@ -3,12 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://www.gstatic.com https://*.firebaseio.com https://*.googleapis.com; script-src 'self' https://www.gstatic.com 'unsafe-inline' https://cdnjs.cloudflare.com https://www.googleapis.com; connect-src https://*.firebaseio.com https://*.googleapis.com; style-src 'self' https://cdnjs.cloudflare.com 'unsafe-inline'; font-src 'self' https://cdnjs.cloudflare.com; img-src 'self' https://*.googleapis.com data: blob:;">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://www.gstatic.com https://*.firebaseio.com https://*.googleapis.com; script-src 'self' https://www.gstatic.com 'unsafe-inline' https://cdnjs.cloudflare.com https://www.googleapis.com; connect-src https://*.firebaseio.com https://*.googleapis.com wss://*.firebaseio.com; style-src 'self' https://cdnjs.cloudflare.com 'unsafe-inline'; font-src 'self' https://cdnjs.cloudflare.com data:; img-src 'self' https://*.googleapis.com data: blob:;">
   <meta http-equiv="X-Content-Type-Options" content="nosniff">
   <meta http-equiv="X-Frame-Options" content="DENY">
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <title>تسجيل الدخول - لوحة الإدارة</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="usr.css">
   <style>
     :root {
       --primary-color: #2196F3;
@@ -208,9 +209,9 @@
   <!-- Firebase Scripts -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-    import { getFirestore, collection, query, where, getDocs, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-    import { Timestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+    import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    import { serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
     import firebaseConfig from './firebase-config.js';
 
     // تهيئة Firebase
@@ -218,19 +219,49 @@
     const auth = getAuth(app);
     const db = getFirestore(app);
 
+    // التحقق من حالة تسجيل الدخول عند تحميل الصفحة
+    onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        try {
+          const isAdmin = await checkAdminPermissions(user);
+          if (isAdmin) {
+            window.location.href = './admin.html';
+          }
+        } catch (error) {
+          console.error('Error checking admin status:', error);
+        }
+      }
+    });
+
     // التحقق من صلاحيات المسؤول
     async function checkAdminPermissions(user) {
       try {
+        // التحقق من وجود المستخدم في مجموعة المسؤولين
         const adminRef = doc(db, 'admins', user.uid);
         const adminDoc = await getDoc(adminRef);
         
         if (!adminDoc.exists()) {
-          // Create admin document if it doesn't exist
-          await setDoc(adminRef, {
-            email: user.email.toLowerCase(),
-            createdAt: Timestamp.now()
-          });
-          console.log('Admin document created successfully');
+          // إذا كان البريد الإلكتروني هو البريد الأول، قم بإنشاء حساب مسؤول
+          const isFirstAdmin = (await getDoc(doc(db, 'system', 'config'))).exists() === false;
+          
+          if (isFirstAdmin) {
+            // إنشاء وثيقة التكوين
+            await setDoc(doc(db, 'system', 'config'), {
+              firstAdminEmail: user.email,
+              createdAt: serverTimestamp()
+            });
+            
+            // إنشاء وثيقة المسؤول
+            await setDoc(adminRef, {
+              email: user.email.toLowerCase(),
+              createdAt: serverTimestamp(),
+              isFirstAdmin: true
+            });
+            
+            console.log('Created first admin account');
+            return true;
+          }
+          return false;
         }
         
         return true;

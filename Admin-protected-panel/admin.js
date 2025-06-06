@@ -19,7 +19,8 @@ import {
     Timestamp,
     getDoc,
     setDoc,
-    limit
+    limit,
+    serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import { 
     getStorage, 
@@ -100,13 +101,14 @@ async function checkAdminPermissions(user) {
         const adminDoc = await getDoc(adminRef);
         
         if (!adminDoc.exists()) {
-            // Create admin document if it doesn't exist
-            await setDoc(adminRef, {
-                email: user.email.toLowerCase(),
-                createdAt: Timestamp.now()
-            });
-            console.log('Admin document created successfully');
+            console.error('User is not an admin');
+            return false;
         }
+        
+        // تحديث آخر وقت تسجيل دخول
+        await updateDoc(adminRef, {
+            lastLoginAt: serverTimestamp()
+        });
         
         return true;
     } catch (error) {

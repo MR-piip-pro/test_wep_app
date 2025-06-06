@@ -7,6 +7,18 @@ service cloud.firestore {
              exists(/databases/$(database)/documents/admins/$(request.auth.uid));
     }
 
+    // Helper function to check if this is the first admin setup
+    function isFirstAdminSetup() {
+      return !exists(/databases/$(database)/documents/system/config);
+    }
+
+    // System configuration
+    match /system/config {
+      allow read: if isAdmin();
+      allow create: if isFirstAdminSetup() && request.auth != null;
+      allow update, delete: if false;
+    }
+
     // Categories collection rules
     match /categories/{categoryId} {
       allow read: if true; // Anyone can read categories
@@ -21,8 +33,12 @@ service cloud.firestore {
 
     // Admins collection rules
     match /admins/{adminId} {
-      allow read: if request.auth != null && request.auth.uid == adminId;
-      allow write: if false; // Admin documents can only be created/modified through backend
+      allow read: if request.auth != null && (request.auth.uid == adminId || isAdmin());
+      allow create: if 
+        (isFirstAdminSetup() && request.auth != null && request.auth.uid == adminId) ||
+        (isAdmin() && request.auth.uid != adminId);
+      allow update: if isAdmin() && request.auth.uid != adminId;
+      allow delete: if isAdmin() && request.auth.uid != adminId;
     }
 
     // Activity logs collection rules
