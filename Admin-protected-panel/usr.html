@@ -6,6 +6,7 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://www.gstatic.com 'unsafe-inline'; connect-src https://*.firebaseio.com https://*.googleapis.com; style-src 'self' 'unsafe-inline';">
   <meta http-equiv="X-Content-Type-Options" content="nosniff">
   <meta http-equiv="X-Frame-Options" content="DENY">
+  <meta name="referrer" content="no-referrer">
   <title>تسجيل الدخول</title>
   <link rel="stylesheet" href="usr.css" />
 </head>
@@ -20,6 +21,7 @@
         placeholder="البريد الإلكتروني" 
         required 
         dir="ltr"
+        autocomplete="username"
       />
       <input 
         type="password" 
@@ -28,6 +30,8 @@
         placeholder="كلمة المرور" 
         required 
         dir="ltr"
+        autocomplete="current-password"
+        minlength="6"
       />
       <button type="submit" id="login-btn">تسجيل الدخول</button>
       <p id="error" class="error-message"></p>
@@ -37,18 +41,6 @@
 
   <!-- Firebase SDK -->
   <script type="module">
-    // تكوين Firebase مباشرة
-    const firebaseConfig = {
-      apiKey: "AIzaSyB3bBsR5j6CHYaXkrIIF_g4ZvWGYd3WTiQ",
-      authDomain: "mr-piip-pro.firebaseapp.com",
-      projectId: "mr-piip-pro",
-      storageBucket: "mr-piip-pro.appspot.com",
-      messagingSenderId: "826519029119",
-      appId: "1:826519029119:web:548c3298af3b20f370464a",
-      measurementId: "G-MQ3QVBXJS4"
-    };
-
-    // استيراد Firebase SDK
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { 
       getAuth, 
@@ -56,11 +48,23 @@
       onAuthStateChanged,
       fetchSignInMethodsForEmail 
     } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+    import { getFirebaseConfig, validateConfig } from './firebase-secure.js';
 
     try {
+      // استرجاع وفك تشفير التكوين
+      const firebaseConfig = getFirebaseConfig();
+
+      // التحقق من صحة التكوين
+      if (!validateConfig(firebaseConfig)) {
+        throw new Error('تكوين Firebase غير صالح');
+      }
+
       // تهيئة Firebase
       const app = initializeApp(firebaseConfig);
       const auth = getAuth(app);
+      
+      // تكوين CORS
+      auth.settings.appVerificationDisabledForTesting = false;
       
       // عناصر الواجهة
       const loginForm = document.getElementById('login-form');
@@ -98,28 +102,38 @@
       }
 
       // التحقق من حالة تسجيل الدخول
-      onAuthStateChanged(auth, user => {
+      onAuthStateChanged(auth, async user => {
         if (user) {
-          console.log('User is signed in:', user.email);
-          // التحقق من صلاحيات المستخدم
-          if (user.email && isAdminEmail(user.email)) {
-            loginAttempts = 0;
-            localStorage.setItem('loginAttempts', '0');
-            localStorage.removeItem('lockoutTime');
-            window.location.href = "./admin.html";
-          } else {
-            // تسجيل خروج المستخدم غير المصرح له
-            auth.signOut().then(() => {
+          try {
+            // التحقق من صلاحيات المستخدم
+            const token = await user.getIdToken();
+            const email = user.email.toLowerCase();
+            
+            if (email && isAdminEmail(email)) {
+              console.log('Admin logged in successfully');
+              loginAttempts = 0;
+              localStorage.setItem('loginAttempts', '0');
+              localStorage.removeItem('lockoutTime');
+              
+              // تأمين عملية التوجيه
+              const adminUrl = new URL('./admin.html', window.location.href).href;
+              window.location.replace(adminUrl);
+            } else {
+              console.log('Unauthorized access attempt');
+              await auth.signOut();
               showError('ليس لديك صلاحية الوصول إلى لوحة الإدارة');
               toggleFormState(false);
-            });
+            }
+          } catch (error) {
+            console.error('Auth state error:', error);
+            showError('حدث خطأ في التحقق من الصلاحيات');
+            toggleFormState(false);
           }
         }
       });
 
       // التحقق من صلاحيات المستخدم
       function isAdminEmail(email) {
-        // يمكنك إضافة المزيد من عناوين البريد الإلكتروني للمسؤولين هنا
         const adminEmails = ['ossamapiip000@gmail.com'];
         return adminEmails.includes(email.toLowerCase());
       }
@@ -177,8 +191,7 @@
           }
 
           // محاولة تسجيل الدخول
-          const userCredential = await signInWithEmailAndPassword(auth, email, password);
-          console.log('Login successful:', userCredential.user.email);
+          await signInWithEmailAndPassword(auth, email, password);
           
         } catch (error) {
           console.error('Login error:', error.code, error.message);
@@ -207,6 +220,9 @@
             case 'auth/network-request-failed':
               errorMessage = 'فشل الاتصال بالخادم. تحقق من اتصال الإنترنت';
               break;
+            case 'auth/invalid-credential':
+              errorMessage = 'بيانات الاعتماد غير صالحة';
+              break;
             default:
               errorMessage = `حدث خطأ أثناء تسجيل الدخول: ${error.message}`;
           }
@@ -222,7 +238,7 @@
       updateAttemptsDisplay();
 
     } catch (initError) {
-      console.error('Firebase initialization error:', initError);
+      console.error('System initialization error:', initError);
       showError('حدث خطأ في تهيئة النظام. يرجى المحاولة مرة أخرى لاحقاً.');
     }
   </script>
