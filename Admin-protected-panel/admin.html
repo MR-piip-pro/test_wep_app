@@ -202,7 +202,6 @@
   </div>
 
   <!-- Firebase Scripts -->
-  <script type="module" src="firebase-secure.js"></script>
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { 
@@ -222,16 +221,54 @@
       where,
       orderBy
     } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-    import { firebaseConfig } from './firebase-secure.js';
+
+    // تكوين Firebase
+    const firebaseConfig = {
+      apiKey: "AIzaSyB3bBsR5j6CHYaXkrIIF_g4ZvWGYd3WTiQ",
+      authDomain: "mr-piip-pro.firebaseapp.com",
+      projectId: "mr-piip-pro",
+      storageBucket: "mr-piip-pro.firebasestorage.app",
+      messagingSenderId: "826519029119",
+      appId: "1:826519029119:web:548c3298af3b20f370464a",
+      measurementId: "G-MQ3QVBXJS4"
+    };
 
     // تهيئة Firebase
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
 
+    // التحقق من صلاحيات المسؤول
+    async function checkAdminPermissions(user) {
+      try {
+        const adminsRef = collection(db, 'admins');
+        const q = query(adminsRef, where('email', '==', user.email.toLowerCase()));
+        const querySnapshot = await getDocs(q);
+        
+        return !querySnapshot.empty;
+      } catch (error) {
+        console.error('Error checking admin permissions:', error);
+        return false;
+      }
+    }
+
     // التحقق من حالة تسجيل الدخول
-    onAuthStateChanged(auth, (user) => {
-      if (!user || user.email !== 'ossamapiip000@gmail.com') {
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        window.location.href = './usr.html';
+        return;
+      }
+
+      try {
+        const isAdmin = await checkAdminPermissions(user);
+        if (!isAdmin) {
+          await auth.signOut();
+          window.location.href = './usr.html';
+          return;
+        }
+      } catch (error) {
+        console.error('Error checking admin status:', error);
+        await auth.signOut();
         window.location.href = './usr.html';
       }
     });

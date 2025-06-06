@@ -64,20 +64,30 @@
       onAuthStateChanged,
       fetchSignInMethodsForEmail 
     } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-    import { getFirebaseConfig, validateConfig } from './firebase-secure.js';
+    import { 
+      getFirestore,
+      collection,
+      query,
+      where,
+      getDocs
+    } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+    // تكوين Firebase مباشرة
+    const firebaseConfig = {
+      apiKey: "AIzaSyB3bBsR5j6CHYaXkrIIF_g4ZvWGYd3WTiQ",
+      authDomain: "mr-piip-pro.firebaseapp.com",
+      projectId: "mr-piip-pro",
+      storageBucket: "mr-piip-pro.firebasestorage.app",
+      messagingSenderId: "826519029119",
+      appId: "1:826519029119:web:548c3298af3b20f370464a",
+      measurementId: "G-MQ3QVBXJS4"
+    };
 
     try {
-      // استرجاع وفك تشفير التكوين
-      const firebaseConfig = getFirebaseConfig();
-
-      // التحقق من صحة التكوين
-      if (!validateConfig(firebaseConfig)) {
-        throw new Error('تكوين Firebase غير صالح');
-      }
-
       // تهيئة Firebase
       const app = initializeApp(firebaseConfig);
       const auth = getAuth(app);
+      const db = getFirestore(app);
       
       // تكوين CORS
       auth.settings.appVerificationDisabledForTesting = false;
@@ -97,14 +107,27 @@
       let loginAttempts = parseInt(localStorage.getItem('loginAttempts') || '0');
       let lockoutTime = parseInt(localStorage.getItem('lockoutTime') || '0');
 
+      // التحقق من صلاحيات المسؤول
+      async function checkAdminPermissions(user) {
+        try {
+          const adminsRef = collection(db, 'admins');
+          const q = query(adminsRef, where('email', '==', user.email.toLowerCase()));
+          const querySnapshot = await getDocs(q);
+          
+          return !querySnapshot.empty;
+        } catch (error) {
+          console.error('Error checking admin permissions:', error);
+          return false;
+        }
+      }
+
       // التحقق من حالة تسجيل الدخول
       onAuthStateChanged(auth, async (user) => {
         if (user) {
           try {
-            const token = await user.getIdToken();
-            const email = user.email.toLowerCase();
+            const isAdmin = await checkAdminPermissions(user);
             
-            if (email === 'ossamapiip000@gmail.com') {
+            if (isAdmin) {
               console.log('Admin logged in successfully');
               loginAttempts = 0;
               localStorage.setItem('loginAttempts', '0');
@@ -211,13 +234,6 @@
             return;
           }
 
-          // التحقق من صلاحيات المستخدم
-          if (email !== 'ossamapiip000@gmail.com') {
-            showError('ليس لديك صلاحية الوصول إلى لوحة الإدارة');
-            enableForm();
-            return;
-          }
-
           // محاولة تسجيل الدخول
           await signInWithEmailAndPassword(auth, email, password);
           
@@ -248,11 +264,8 @@
             case 'auth/network-request-failed':
               errorMessage = 'فشل الاتصال بالخادم. تحقق من اتصال الإنترنت';
               break;
-            case 'auth/invalid-credential':
-              errorMessage = 'بيانات الاعتماد غير صالحة';
-              break;
             default:
-              errorMessage = `حدث خطأ أثناء تسجيل الدخول: ${error.message}`;
+              errorMessage = 'حدث خطأ غير متوقع. يرجى المحاولة مرة أخرى';
           }
           
           showError(errorMessage);
@@ -261,13 +274,9 @@
         }
       };
 
-      // التحقق من حالة القفل عند تحميل الصفحة
-      checkLockoutStatus();
-      updateAttemptsDisplay();
-
-    } catch (initError) {
-      console.error('System initialization error:', initError);
-      showError('حدث خطأ في تهيئة النظام. يرجى المحاولة مرة أخرى لاحقاً.');
+    } catch (error) {
+      console.error('Initialization error:', error);
+      showError('حدث خطأ في تهيئة النظام');
     }
   </script>
 </body>
