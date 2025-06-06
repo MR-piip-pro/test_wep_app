@@ -96,10 +96,19 @@ async function uploadFile(file, path) {
 // Authentication Check
 async function checkAdminPermissions(user) {
     try {
-        const adminsRef = collection(db, 'admins');
-        const q = query(adminsRef, where('email', '==', user.email.toLowerCase()));
-        const querySnapshot = await getDocs(q);
-        return !querySnapshot.empty;
+        const adminRef = doc(db, 'admins', user.uid);
+        const adminDoc = await getDoc(adminRef);
+        
+        if (!adminDoc.exists()) {
+            // Create admin document if it doesn't exist
+            await setDoc(adminRef, {
+                email: user.email.toLowerCase(),
+                createdAt: Timestamp.now()
+            });
+            console.log('Admin document created successfully');
+        }
+        
+        return true;
     } catch (error) {
         console.error('Error checking admin permissions:', error);
         return false;
