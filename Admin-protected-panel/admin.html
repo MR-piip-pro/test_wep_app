@@ -10,6 +10,120 @@
   <title>لوحة الإدارة - متجر الأدوات</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <link rel="stylesheet" href="admin.css" />
+  <style>
+    /* Notification Styles */
+    .notification {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      padding: 15px 25px;
+      border-radius: 8px;
+      color: white;
+      font-weight: 500;
+      z-index: 1000;
+      animation: slideIn 0.3s ease-out;
+    }
+
+    .notification.success {
+      background-color: var(--success-color);
+    }
+
+    .notification.error {
+      background-color: var(--error-color);
+    }
+
+    @keyframes slideIn {
+      from {
+        transform: translateX(100%);
+        opacity: 0;
+      }
+      to {
+        transform: translateX(0);
+        opacity: 1;
+      }
+    }
+
+    /* Category Card Styles */
+    .category-card {
+      background-color: var(--card-background);
+      padding: 1.5rem;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px var(--shadow-color);
+    }
+
+    .category-card h3 {
+      margin-bottom: 0.5rem;
+      color: var(--primary-color);
+    }
+
+    .category-card p {
+      margin-bottom: 1rem;
+      color: var(--text-color);
+    }
+
+    .category-actions {
+      display: flex;
+      gap: 0.5rem;
+      justify-content: flex-end;
+    }
+
+    .edit-btn,
+    .delete-btn {
+      padding: 0.5rem;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+
+    .edit-btn {
+      background-color: var(--primary-color);
+      color: white;
+    }
+
+    .delete-btn {
+      background-color: var(--danger-color);
+      color: white;
+    }
+
+    .edit-btn:hover {
+      background-color: var(--primary-dark);
+    }
+
+    .delete-btn:hover {
+      background-color: #d32f2f;
+    }
+
+    /* Tool Modal Styles */
+    .modal form {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 0.5rem;
+      font-weight: 500;
+    }
+
+    .form-group input,
+    .form-group textarea,
+    .form-group select {
+      width: 100%;
+      padding: 0.75rem;
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      font-size: 1rem;
+      background-color: var(--input-bg);
+      color: var(--text-color);
+    }
+
+    .form-group textarea {
+      min-height: 100px;
+      resize: vertical;
+    }
+  </style>
 </head>
 <body>
   <div class="admin-container">
@@ -66,6 +180,14 @@
             <p id="total-categories">0</p>
           </div>
         </div>
+
+        <!-- Recent Activity -->
+        <div class="recent-activity">
+          <h2>النشاط الأخير</h2>
+          <ul id="recent-activity" class="activity-list">
+            <!-- Will be populated dynamically -->
+          </ul>
+        </div>
       </section>
 
       <!-- Tools Section -->
@@ -94,7 +216,7 @@
               </tr>
             </thead>
             <tbody id="tools-table-body">
-              <!-- سيتم ملء هذا الجزء ديناميكياً -->
+              <!-- Will be populated dynamically -->
             </tbody>
           </table>
         </div>
@@ -109,7 +231,7 @@
           </button>
         </div>
         <div class="categories-grid" id="categories-grid">
-          <!-- سيتم ملء هذا الجزء ديناميكياً -->
+          <!-- Will be populated dynamically -->
         </div>
       </section>
 
@@ -151,23 +273,28 @@
       <form id="add-tool-form">
         <div class="form-group">
           <label for="tool-name">اسم الأداة</label>
-          <input type="text" id="tool-name" required>
+          <input type="text" id="tool-name" name="tool-name" required>
         </div>
         <div class="form-group">
           <label for="tool-description">الوصف</label>
-          <textarea id="tool-description" required></textarea>
+          <textarea id="tool-description" name="tool-description" required></textarea>
         </div>
         <div class="form-group">
           <label for="tool-category">الفئة</label>
-          <select id="tool-category" required></select>
+          <select id="tool-category" name="tool-category" required></select>
         </div>
         <div class="form-group">
-          <label for="tool-link">رابط التحميل</label>
-          <input type="url" id="tool-link" required>
+          <label>الملف أو الرابط</label>
+          <div class="upload-group">
+            <input type="file" id="tool-file" name="tool-file" class="file-input">
+            <label for="tool-file" id="tool-file-label" class="file-label">اختر ملفاً</label>
+            <span class="or-separator">أو</span>
+            <input type="url" id="tool-link" name="tool-link" placeholder="أدخل رابطاً خارجياً">
+          </div>
         </div>
         <div class="form-group">
           <label for="tool-tags">الوسوم (مفصولة بفواصل)</label>
-          <input type="text" id="tool-tags">
+          <input type="text" id="tool-tags" name="tool-tags">
         </div>
         <div class="modal-footer">
           <button type="button" class="secondary-btn close-modal">إلغاء</button>
@@ -187,11 +314,18 @@
       <form id="add-category-form">
         <div class="form-group">
           <label for="category-name">اسم الفئة</label>
-          <input type="text" id="category-name" required>
+          <input type="text" id="category-name" name="category-name" required>
         </div>
         <div class="form-group">
           <label for="category-description">الوصف</label>
-          <textarea id="category-description" required></textarea>
+          <textarea id="category-description" name="category-description" required></textarea>
+        </div>
+        <div class="form-group">
+          <label for="category-image">صورة الفئة</label>
+          <div class="upload-group">
+            <input type="file" id="category-image" name="category-image" class="file-input" accept="image/*">
+            <label for="category-image" id="category-image-label" class="file-label">اختر صورة</label>
+          </div>
         </div>
         <div class="modal-footer">
           <button type="button" class="secondary-btn close-modal">إلغاء</button>
@@ -201,160 +335,83 @@
     </div>
   </div>
 
+  <!-- Edit Tool Modal -->
+  <div id="edit-tool-modal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>تعديل الأداة</h2>
+        <button class="close-modal">&times;</button>
+      </div>
+      <form id="edit-tool-form">
+        <input type="hidden" id="edit-tool-id">
+        <div class="form-group">
+          <label for="edit-tool-name">اسم الأداة</label>
+          <input type="text" id="edit-tool-name" name="edit-tool-name" required>
+        </div>
+        <div class="form-group">
+          <label for="edit-tool-description">الوصف</label>
+          <textarea id="edit-tool-description" name="edit-tool-description" required></textarea>
+        </div>
+        <div class="form-group">
+          <label for="edit-tool-category">الفئة</label>
+          <select id="edit-tool-category" name="edit-tool-category" required></select>
+        </div>
+        <div class="form-group">
+          <label>الملف أو الرابط</label>
+          <div class="upload-group">
+            <input type="file" id="edit-tool-file" name="edit-tool-file" class="file-input">
+            <label for="edit-tool-file" id="edit-tool-file-label" class="file-label">اختر ملفاً</label>
+            <span class="or-separator">أو</span>
+            <input type="url" id="edit-tool-link" name="edit-tool-link" placeholder="أدخل رابطاً خارجياً">
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="edit-tool-tags">الوسوم (مفصولة بفواصل)</label>
+          <input type="text" id="edit-tool-tags" name="edit-tool-tags">
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="secondary-btn close-modal">إلغاء</button>
+          <button type="submit" class="primary-btn">حفظ التغييرات</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Edit Category Modal -->
+  <div id="edit-category-modal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>تعديل الفئة</h2>
+        <button class="close-modal">&times;</button>
+      </div>
+      <form id="edit-category-form">
+        <input type="hidden" id="edit-category-id">
+        <div class="form-group">
+          <label for="edit-category-name">اسم الفئة</label>
+          <input type="text" id="edit-category-name" name="edit-category-name" required>
+        </div>
+        <div class="form-group">
+          <label for="edit-category-description">الوصف</label>
+          <textarea id="edit-category-description" name="edit-category-description" required></textarea>
+        </div>
+        <div class="form-group">
+          <label for="edit-category-image">صورة الفئة</label>
+          <div class="upload-group">
+            <input type="file" id="edit-category-image" name="edit-category-image" class="file-input" accept="image/*">
+            <label for="edit-category-image" id="edit-category-image-label" class="file-label">اختر صورة</label>
+          </div>
+          <div id="current-category-image" class="current-image"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="secondary-btn close-modal">إلغاء</button>
+          <button type="submit" class="primary-btn">حفظ التغييرات</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- Firebase Scripts -->
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-    import { 
-      getAuth, 
-      onAuthStateChanged, 
-      signOut 
-    } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-    import { 
-      getFirestore,
-      collection,
-      getDocs,
-      addDoc,
-      deleteDoc,
-      doc,
-      updateDoc,
-      query,
-      where,
-      orderBy
-    } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-
-    // تكوين Firebase
-    const firebaseConfig = {
-      apiKey: "AIzaSyB3bBsR5j6CHYaXkrIIF_g4ZvWGYd3WTiQ",
-      authDomain: "mr-piip-pro.firebaseapp.com",
-      projectId: "mr-piip-pro",
-      storageBucket: "mr-piip-pro.firebasestorage.app",
-      messagingSenderId: "826519029119",
-      appId: "1:826519029119:web:548c3298af3b20f370464a",
-      measurementId: "G-MQ3QVBXJS4"
-    };
-
-    // تهيئة Firebase
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db = getFirestore(app);
-
-    // التحقق من صلاحيات المسؤول
-    async function checkAdminPermissions(user) {
-      try {
-        const adminsRef = collection(db, 'admins');
-        const q = query(adminsRef, where('email', '==', user.email.toLowerCase()));
-        const querySnapshot = await getDocs(q);
-        
-        return !querySnapshot.empty;
-      } catch (error) {
-        console.error('Error checking admin permissions:', error);
-        return false;
-      }
-    }
-
-    // التحقق من حالة تسجيل الدخول
-    onAuthStateChanged(auth, async (user) => {
-      if (!user) {
-        window.location.href = './usr.html';
-        return;
-      }
-
-      try {
-        const isAdmin = await checkAdminPermissions(user);
-        if (!isAdmin) {
-          await auth.signOut();
-          window.location.href = './usr.html';
-          return;
-        }
-      } catch (error) {
-        console.error('Error checking admin status:', error);
-        await auth.signOut();
-        window.location.href = './usr.html';
-      }
-    });
-
-    // تسجيل الخروج
-    document.getElementById('logout-btn').addEventListener('click', async () => {
-      try {
-        await signOut(auth);
-        window.location.href = './usr.html';
-      } catch (error) {
-        console.error('خطأ في تسجيل الخروج:', error);
-      }
-    });
-
-    // تبديل الأقسام
-    const navItems = document.querySelectorAll('.nav-item');
-    const sections = document.querySelectorAll('.content-section');
-
-    navItems.forEach(item => {
-      item.addEventListener('click', () => {
-        const targetSection = item.dataset.section;
-        
-        navItems.forEach(navItem => navItem.classList.remove('active'));
-        item.classList.add('active');
-        
-        sections.forEach(section => {
-          section.classList.remove('active');
-          if (section.id === targetSection) {
-            section.classList.add('active');
-          }
-        });
-      });
-    });
-
-    // إدارة النوافذ المنبثقة
-    const modals = document.querySelectorAll('.modal');
-    const addToolBtn = document.getElementById('add-tool-btn');
-    const addCategoryBtn = document.getElementById('add-category-btn');
-    const closeButtons = document.querySelectorAll('.close-modal');
-
-    function openModal(modalId) {
-      document.getElementById(modalId).style.display = 'flex';
-    }
-
-    function closeModal(modal) {
-      modal.style.display = 'none';
-    }
-
-    addToolBtn.addEventListener('click', () => openModal('add-tool-modal'));
-    addCategoryBtn.addEventListener('click', () => openModal('add-category-modal'));
-
-    closeButtons.forEach(button => {
-      button.addEventListener('click', () => {
-        const modal = button.closest('.modal');
-        closeModal(modal);
-      });
-    });
-
-    window.addEventListener('click', (e) => {
-      modals.forEach(modal => {
-        if (e.target === modal) {
-          closeModal(modal);
-        }
-      });
-    });
-
-    // تحميل البيانات
-    async function loadDashboardData() {
-      try {
-        const toolsSnapshot = await getDocs(collection(db, 'tools'));
-        const categoriesSnapshot = await getDocs(collection(db, 'categories'));
-        
-        document.getElementById('total-tools').textContent = toolsSnapshot.size;
-        document.getElementById('total-categories').textContent = categoriesSnapshot.size;
-        
-        // يمكن إضافة المزيد من الإحصائيات هنا
-      } catch (error) {
-        console.error('خطأ في تحميل بيانات لوحة التحكم:', error);
-      }
-    }
-
-    // تحميل البيانات عند تحميل الصفحة
-    document.addEventListener('DOMContentLoaded', () => {
-      loadDashboardData();
-    });
-  </script>
+  <script type="module" src="admin.js"></script>
 </body>
 </html>
 
