@@ -27,17 +27,7 @@ import {
     getDownloadURL,
     deleteObject
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
-
-// Firebase Configuration
-const firebaseConfig = {
-    apiKey: "AIzaSyB3bBsR5j6CHYaXkrIIF_g4ZvWGYd3WTiQ",
-    authDomain: "mr-piip-pro.firebaseapp.com",
-    projectId: "mr-piip-pro",
-    storageBucket: "mr-piip-pro.firebasestorage.app",
-    messagingSenderId: "826519029119",
-    appId: "1:826519029119:web:548c3298af3b20f370464a",
-    measurementId: "G-MQ3QVBXJS4"
-};
+import firebaseConfig from './firebase-config.js';
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
@@ -65,6 +55,30 @@ const totalToolsElement = document.getElementById('total-tools');
 const totalDownloadsElement = document.getElementById('total-downloads');
 const totalUsersElement = document.getElementById('total-users');
 const totalCategoriesElement = document.getElementById('total-categories');
+
+// Initialize Navigation
+function initializeNavigation() {
+    const navItems = document.querySelectorAll('.nav-item');
+    const sections = document.querySelectorAll('.content-section');
+
+    // Show dashboard by default
+    document.getElementById('dashboard').classList.add('active');
+    navItems[0].classList.add('active');
+
+    navItems.forEach(item => {
+        item.addEventListener('click', () => {
+            const targetSection = item.getAttribute('data-section');
+            
+            // Remove active class from all nav items and sections
+            navItems.forEach(navItem => navItem.classList.remove('active'));
+            sections.forEach(section => section.classList.remove('active'));
+            
+            // Add active class to clicked nav item and corresponding section
+            item.classList.add('active');
+            document.getElementById(targetSection).classList.add('active');
+        });
+    });
+}
 
 // File Upload Function
 async function uploadFile(file, path) {
@@ -108,10 +122,10 @@ async function loadTools() {
                 <td class="tool-category">${tool.category}</td>
                 <td class="tool-downloads">${tool.downloads || 0}</td>
                 <td class="tool-actions">
-                    <button onclick="editTool('${doc.id}')" class="edit-btn">
+                    <button onclick="handleEditTool('${doc.id}')" class="edit-btn">
                         <i class="fas fa-edit"></i>
                     </button>
-                    <button onclick="deleteTool('${doc.id}')" class="delete-btn">
+                    <button onclick="handleDeleteTool('${doc.id}')" class="delete-btn">
                         <i class="fas fa-trash"></i>
                     </button>
                 </td>
@@ -124,40 +138,35 @@ async function loadTools() {
     }
 }
 
-async function addTool(event) {
-    event.preventDefault();
-    const formData = new FormData(addToolForm);
-    
+async function addTool(e) {
+    e.preventDefault();
     try {
+        const name = document.getElementById('tool-name').value;
+        const description = document.getElementById('tool-description').value;
+        const category = document.getElementById('tool-category').value;
+        const file = document.getElementById('tool-file').files[0];
+        const link = document.getElementById('tool-link').value;
+        const tags = document.getElementById('tool-tags').value.split(',').map(tag => tag.trim()).filter(Boolean);
+
         let fileUrl = '';
-        const file = formData.get('tool-file');
-        
-        if (file && file.size > 0) {
-            const filePath = `tools/${Date.now()}_${file.name}`;
-            fileUrl = await uploadFile(file, filePath);
+        if (file) {
+            fileUrl = await uploadFile(file, `tools/${file.name}`);
         }
 
-        const toolData = {
-            name: formData.get('tool-name'),
-            description: formData.get('tool-description'),
-            category: formData.get('tool-category'),
-            link: fileUrl || formData.get('tool-link'),
-            tags: formData.get('tool-tags').split(',').map(tag => tag.trim()),
+        await addDoc(collection(db, 'tools'), {
+            name,
+            description,
+            category,
+            fileUrl: fileUrl || link,
+            tags,
             downloads: 0,
-            createdAt: Timestamp.now(),
-            createdBy: auth.currentUser.email,
-            isFile: !!fileUrl
-        };
+            createdAt: Timestamp.now()
+        });
 
-        await addDoc(collection(db, 'tools'), toolData);
-        
-        // Log activity
-        await logActivity('add_tool', toolData.name);
-        
         closeModal('add-tool-modal');
-        addToolForm.reset();
         loadTools();
-        showNotification('تمت إضافة الأداة بنجاح', 'success');
+        showNotification('تم إضافة الأداة بنجاح', 'success');
+        await logActivity('add_tool', `تمت إضافة الأداة: ${name}`);
     } catch (error) {
         console.error('Error adding tool:', error);
         showNotification('حدث خطأ في إضافة الأداة', 'error');
@@ -181,12 +190,12 @@ async function editTool(toolId) {
         document.getElementById('edit-tool-name').value = tool.name;
         document.getElementById('edit-tool-description').value = tool.description;
         document.getElementById('edit-tool-category').value = tool.category;
-        document.getElementById('edit-tool-tags').value = tool.tags.join(', ');
+        document.getElementById('edit-tool-tags').value = tool.tags ? tool.tags.join(', ') : '';
         
-        if (tool.isFile) {
-            document.getElementById('edit-tool-file-label').textContent = 'الملف الحالي';
+        if (tool.fileUrl && !tool.fileUrl.includes('firebasestorage')) {
+            document.getElementById('edit-tool-link').value = tool.fileUrl;
         } else {
-            document.getElementById('edit-tool-link').value = tool.link;
+            document.getElementById('edit-tool-file-label').textContent = 'اختر ملفاً';
         }
         
         openModal('edit-tool-modal');
@@ -196,50 +205,46 @@ async function editTool(toolId) {
     }
 }
 
-async function updateTool(event) {
-    event.preventDefault();
-    const formData = new FormData(editToolForm);
-    const toolId = document.getElementById('edit-tool-id').value;
-    
+async function updateTool(e) {
+    e.preventDefault();
     try {
-        let fileUrl = '';
-        const file = formData.get('edit-tool-file');
-        
-        if (file && file.size > 0) {
-            const filePath = `tools/${Date.now()}_${file.name}`;
-            fileUrl = await uploadFile(file, filePath);
-            
-            // Delete old file if exists
-            const toolRef = doc(db, 'tools', toolId);
-            const toolDoc = await getDoc(toolRef);
-            if (toolDoc.exists() && toolDoc.data().isFile) {
-                await deleteFile(toolDoc.data().link);
+        const id = document.getElementById('edit-tool-id').value;
+        const name = document.getElementById('edit-tool-name').value;
+        const description = document.getElementById('edit-tool-description').value;
+        const category = document.getElementById('edit-tool-category').value;
+        const file = document.getElementById('edit-tool-file').files[0];
+        const link = document.getElementById('edit-tool-link').value;
+        const tags = document.getElementById('edit-tool-tags').value.split(',').map(tag => tag.trim()).filter(Boolean);
+
+        const toolRef = doc(db, 'tools', id);
+        const toolDoc = await getDoc(toolRef);
+        const oldData = toolDoc.data();
+
+        let fileUrl = oldData.fileUrl;
+        if (file) {
+            // Delete old file if it exists
+            if (oldData.fileUrl && oldData.fileUrl.includes('firebasestorage')) {
+                const oldFileRef = ref(storage, oldData.fileUrl);
+                await deleteObject(oldFileRef);
             }
+            fileUrl = await uploadFile(file, `tools/${file.name}`);
+        } else if (link) {
+            fileUrl = link;
         }
 
-        const toolData = {
-            name: formData.get('edit-tool-name'),
-            description: formData.get('edit-tool-description'),
-            category: formData.get('edit-tool-category'),
-            tags: formData.get('edit-tool-tags').split(',').map(tag => tag.trim()),
-            updatedAt: Timestamp.now(),
-            updatedBy: auth.currentUser.email
-        };
+        await updateDoc(toolRef, {
+            name,
+            description,
+            category,
+            fileUrl,
+            tags,
+            updatedAt: Timestamp.now()
+        });
 
-        if (fileUrl || formData.get('edit-tool-link')) {
-            toolData.link = fileUrl || formData.get('edit-tool-link');
-            toolData.isFile = !!fileUrl;
-        }
-
-        await updateDoc(doc(db, 'tools', toolId), toolData);
-        
-        // Log activity
-        await logActivity('edit_tool', toolData.name);
-        
         closeModal('edit-tool-modal');
-        editToolForm.reset();
         loadTools();
         showNotification('تم تحديث الأداة بنجاح', 'success');
+        await logActivity('edit_tool', `تم تحديث الأداة: ${name}`);
     } catch (error) {
         console.error('Error updating tool:', error);
         showNotification('حدث خطأ في تحديث الأداة', 'error');
@@ -263,8 +268,9 @@ async function deleteTool(toolId) {
         const tool = toolDoc.data();
         
         // Delete file if exists
-        if (tool.isFile) {
-            await deleteFile(tool.link);
+        if (tool.fileUrl && tool.fileUrl.includes('firebasestorage')) {
+            const fileRef = ref(storage, tool.fileUrl);
+            await deleteObject(fileRef);
         }
 
         await deleteDoc(toolRef);
@@ -301,10 +307,10 @@ async function loadCategories() {
                     <h3>${category.name}</h3>
                     <p>${category.description}</p>
                     <div class="category-actions">
-                        <button onclick="editCategory('${doc.id}')" class="edit-btn">
+                        <button onclick="handleEditCategory('${doc.id}')" class="edit-btn">
                             <i class="fas fa-edit"></i>
                         </button>
-                        <button onclick="deleteCategory('${doc.id}')" class="delete-btn">
+                        <button onclick="handleDeleteCategory('${doc.id}')" class="delete-btn">
                             <i class="fas fa-trash"></i>
                         </button>
                     </div>
@@ -324,36 +330,29 @@ async function loadCategories() {
     }
 }
 
-async function addCategory(event) {
-    event.preventDefault();
-    const formData = new FormData(addCategoryForm);
-    
+async function addCategory(e) {
+    e.preventDefault();
     try {
+        const name = document.getElementById('category-name').value;
+        const description = document.getElementById('category-description').value;
+        const image = document.getElementById('category-image').files[0];
+
         let imageUrl = '';
-        const image = formData.get('category-image');
-        
-        if (image && image.size > 0) {
-            const imagePath = `categories/${Date.now()}_${image.name}`;
-            imageUrl = await uploadFile(image, imagePath);
+        if (image) {
+            imageUrl = await uploadFile(image, `categories/${image.name}`);
         }
 
-        const categoryData = {
-            name: formData.get('category-name'),
-            description: formData.get('category-description'),
-            imageUrl: imageUrl,
-            createdAt: Timestamp.now(),
-            createdBy: auth.currentUser.email
-        };
+        await addDoc(collection(db, 'categories'), {
+            name,
+            description,
+            imageUrl,
+            createdAt: Timestamp.now()
+        });
 
-        await addDoc(collection(db, 'categories'), categoryData);
-        
-        // Log activity
-        await logActivity('add_category', categoryData.name);
-        
         closeModal('add-category-modal');
-        addCategoryForm.reset();
         loadCategories();
-        showNotification('تمت إضافة الفئة بنجاح', 'success');
+        showNotification('تم إضافة الفئة بنجاح', 'success');
+        await logActivity('add_category', `تمت إضافة الفئة: ${name}`);
     } catch (error) {
         console.error('Error adding category:', error);
         showNotification('حدث خطأ في إضافة الفئة', 'error');
@@ -390,47 +389,39 @@ async function editCategory(categoryId) {
     }
 }
 
-async function updateCategory(event) {
-    event.preventDefault();
-    const formData = new FormData(editCategoryForm);
-    const categoryId = document.getElementById('edit-category-id').value;
-    
+async function updateCategory(e) {
+    e.preventDefault();
     try {
-        let imageUrl = '';
-        const image = formData.get('edit-category-image');
-        
-        if (image && image.size > 0) {
-            const imagePath = `categories/${Date.now()}_${image.name}`;
-            imageUrl = await uploadFile(image, imagePath);
-            
-            // Delete old image if exists
-            const categoryRef = doc(db, 'categories', categoryId);
-            const categoryDoc = await getDoc(categoryRef);
-            if (categoryDoc.exists() && categoryDoc.data().imageUrl) {
-                await deleteFile(categoryDoc.data().imageUrl);
+        const id = document.getElementById('edit-category-id').value;
+        const name = document.getElementById('edit-category-name').value;
+        const description = document.getElementById('edit-category-description').value;
+        const image = document.getElementById('edit-category-image').files[0];
+
+        const categoryRef = doc(db, 'categories', id);
+        const categoryDoc = await getDoc(categoryRef);
+        const oldData = categoryDoc.data();
+
+        let imageUrl = oldData.imageUrl;
+        if (image) {
+            // Delete old image if it exists
+            if (oldData.imageUrl) {
+                const oldImageRef = ref(storage, oldData.imageUrl);
+                await deleteObject(oldImageRef);
             }
+            imageUrl = await uploadFile(image, `categories/${image.name}`);
         }
 
-        const categoryData = {
-            name: formData.get('edit-category-name'),
-            description: formData.get('edit-category-description'),
-            updatedAt: Timestamp.now(),
-            updatedBy: auth.currentUser.email
-        };
+        await updateDoc(categoryRef, {
+            name,
+            description,
+            imageUrl,
+            updatedAt: Timestamp.now()
+        });
 
-        if (imageUrl) {
-            categoryData.imageUrl = imageUrl;
-        }
-
-        await updateDoc(doc(db, 'categories', categoryId), categoryData);
-        
-        // Log activity
-        await logActivity('edit_category', categoryData.name);
-        
         closeModal('edit-category-modal');
-        editCategoryForm.reset();
         loadCategories();
         showNotification('تم تحديث الفئة بنجاح', 'success');
+        await logActivity('edit_category', `تم تحديث الفئة: ${name}`);
     } catch (error) {
         console.error('Error updating category:', error);
         showNotification('حدث خطأ في تحديث الفئة', 'error');
@@ -455,7 +446,8 @@ async function deleteCategory(categoryId) {
         
         // Delete image if exists
         if (category.imageUrl) {
-            await deleteFile(category.imageUrl);
+            const imageRef = ref(storage, category.imageUrl);
+            await deleteObject(imageRef);
         }
 
         await deleteDoc(categoryRef);
@@ -599,11 +591,17 @@ function showNotification(message, type) {
 }
 
 function closeModal(modalId) {
-    document.getElementById(modalId).style.display = 'none';
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.style.display = 'none';
+    }
 }
 
 function openModal(modalId) {
-    document.getElementById(modalId).style.display = 'flex';
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.style.display = 'flex';
+    }
 }
 
 function formatTimestamp(timestamp) {
@@ -764,32 +762,101 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
-// Initialize Navigation
-function initializeNavigation() {
-    const navItems = document.querySelectorAll('.nav-item');
-    const sections = document.querySelectorAll('.content-section');
+// Event Handlers
+async function handleEditTool(id) {
+    try {
+        const toolRef = doc(db, 'tools', id);
+        const toolDoc = await getDoc(toolRef);
+        const tool = toolDoc.data();
 
-    // Show dashboard by default
-    document.getElementById('dashboard').classList.add('active');
-    navItems[0].classList.add('active');
+        document.getElementById('edit-tool-id').value = id;
+        document.getElementById('edit-tool-name').value = tool.name;
+        document.getElementById('edit-tool-description').value = tool.description;
+        document.getElementById('edit-tool-category').value = tool.category;
+        document.getElementById('edit-tool-link').value = tool.fileUrl && !tool.fileUrl.includes('firebasestorage') ? tool.fileUrl : '';
+        document.getElementById('edit-tool-tags').value = tool.tags ? tool.tags.join(', ') : '';
+        document.getElementById('edit-tool-file-label').textContent = 'اختر ملفاً';
 
-    navItems.forEach(item => {
-        item.addEventListener('click', () => {
-            const targetSection = item.dataset.section;
-            
-            // Remove active class from all nav items and sections
-            navItems.forEach(navItem => navItem.classList.remove('active'));
-            sections.forEach(section => section.classList.remove('active'));
-            
-            // Add active class to clicked nav item and corresponding section
-            item.classList.add('active');
-            document.getElementById(targetSection).classList.add('active');
-        });
-    });
+        openModal('edit-tool-modal');
+    } catch (error) {
+        console.error('Error loading tool for edit:', error);
+        showNotification('حدث خطأ في تحميل بيانات الأداة', 'error');
+    }
 }
 
-// Expose functions to window object for onclick handlers
-window.editTool = editTool;
-window.deleteTool = deleteTool;
-window.editCategory = editCategory;
-window.deleteCategory = deleteCategory; 
+async function handleDeleteTool(id) {
+    if (confirm('هل أنت متأكد من حذف هذه الأداة؟')) {
+        try {
+            const toolRef = doc(db, 'tools', id);
+            const toolDoc = await getDoc(toolRef);
+            const tool = toolDoc.data();
+
+            // Delete file from storage if it exists
+            if (tool.fileUrl && tool.fileUrl.includes('firebasestorage')) {
+                const fileRef = ref(storage, tool.fileUrl);
+                await deleteObject(fileRef);
+            }
+
+            await deleteDoc(toolRef);
+            loadTools();
+            showNotification('تم حذف الأداة بنجاح', 'success');
+            await logActivity('delete_tool', `تم حذف الأداة: ${tool.name}`);
+        } catch (error) {
+            console.error('Error deleting tool:', error);
+            showNotification('حدث خطأ في حذف الأداة', 'error');
+        }
+    }
+}
+
+async function handleEditCategory(id) {
+    try {
+        const categoryRef = doc(db, 'categories', id);
+        const categoryDoc = await getDoc(categoryRef);
+        const category = categoryDoc.data();
+
+        document.getElementById('edit-category-id').value = id;
+        document.getElementById('edit-category-name').value = category.name;
+        document.getElementById('edit-category-description').value = category.description;
+        document.getElementById('edit-category-image-label').textContent = 'اختر صورة';
+
+        if (category.imageUrl) {
+            const currentImageContainer = document.getElementById('current-category-image');
+            currentImageContainer.innerHTML = `<img src="${category.imageUrl}" alt="${category.name}">`;
+        }
+
+        openModal('edit-category-modal');
+    } catch (error) {
+        console.error('Error loading category for edit:', error);
+        showNotification('حدث خطأ في تحميل بيانات الفئة', 'error');
+    }
+}
+
+async function handleDeleteCategory(id) {
+    if (confirm('هل أنت متأكد من حذف هذه الفئة؟')) {
+        try {
+            const categoryRef = doc(db, 'categories', id);
+            const categoryDoc = await getDoc(categoryRef);
+            const category = categoryDoc.data();
+
+            // Delete image from storage if it exists
+            if (category.imageUrl) {
+                const imageRef = ref(storage, category.imageUrl);
+                await deleteObject(imageRef);
+            }
+
+            await deleteDoc(categoryRef);
+            loadCategories();
+            showNotification('تم حذف الفئة بنجاح', 'success');
+            await logActivity('delete_category', `تم حذف الفئة: ${category.name}`);
+        } catch (error) {
+            console.error('Error deleting category:', error);
+            showNotification('حدث خطأ في حذف الفئة', 'error');
+        }
+    }
+}
+
+// Make functions available globally
+window.handleEditTool = handleEditTool;
+window.handleDeleteTool = handleDeleteTool;
+window.handleEditCategory = handleEditCategory;
+window.handleDeleteCategory = handleDeleteCategory; 
