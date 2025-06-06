@@ -1,0 +1,11 @@
+{
+    "name": "admin-protected-panel",
+    "version": "1.0.0",
+    "description": "لوحة إدارة محمية بنظام مصادقة Firebase",
+    "main": "server.js",
+    "scripts": {
+        "start": "node server.js"
+    },
+    "author": "Mr. PIIP PRO",
+    "license": "MIT"
+} 
