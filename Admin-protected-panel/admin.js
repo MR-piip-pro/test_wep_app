@@ -30,6 +30,8 @@ import {
     deleteObject
 } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
 import firebaseConfig from './firebase-config.js';
+import { authService } from './services/auth.service.js';
+import { AUTH_CONFIG } from './config/auth.js';
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
@@ -667,38 +669,14 @@ function formatAction(action) {
 // Event Listeners
 document.addEventListener('DOMContentLoaded', () => {
     // Check authentication
-    onAuthStateChanged(auth, async (user) => {
-        if (!user) {
-            window.location.href = './usr.html';
+    authService.initAuthStateListener((user, isAdmin) => {
+        if (!user || !isAdmin) {
+            window.location.href = AUTH_CONFIG.ROUTES.LOGIN;
             return;
         }
-
-        try {
-            const isAdmin = await checkAdminPermissions(user);
-            if (!isAdmin) {
-                await signOut(auth);
-                window.location.href = './usr.html';
-                return;
-            }
-
-            // Load initial data
-            loadTools();
-            loadCategories();
-            loadDashboardStats();
-            
-            // Load settings
-            const savedTheme = localStorage.getItem('theme') || 'light';
-            themeSelect.value = savedTheme;
-            document.documentElement.setAttribute('data-theme', savedTheme);
-            
-            // Initialize navigation
-            initializeNavigation();
-            
-        } catch (error) {
-            console.error('Error checking admin status:', error);
-            await signOut(auth);
-            window.location.href = './usr.html';
-        }
+        
+        // تحديث واجهة المستخدم
+        updateUI(user);
     });
 
     // Form submit handlers
@@ -735,11 +713,11 @@ document.addEventListener('DOMContentLoaded', () => {
     // Logout button
     logoutBtn.addEventListener('click', async () => {
         try {
-            await signOut(auth);
-            window.location.href = './usr.html';
+            await authService.logout();
+            window.location.href = AUTH_CONFIG.ROUTES.LOGIN;
         } catch (error) {
-            console.error('Error signing out:', error);
-            showNotification('حدث خطأ أثناء تسجيل الخروج', 'error');
+            console.error('Logout error:', error);
+            showNotification(error.message, 'error');
         }
     });
     
@@ -891,8 +869,54 @@ async function handleDeleteCategory(id) {
     }
 }
 
-// Make functions available globally
-window.handleEditTool = handleEditTool;
-window.handleDeleteTool = handleDeleteTool;
-window.handleEditCategory = handleEditCategory;
-window.handleDeleteCategory = handleDeleteCategory; 
+// تحديث واجهة المستخدم
+function updateUI(user) {
+    // تحديث اسم المستخدم
+    const userNameElement = document.getElementById('user-name');
+    if (userNameElement) {
+        userNameElement.textContent = user.displayName || user.email;
+    }
+
+    // تحديث صورة المستخدم
+    const userAvatarElement = document.getElementById('user-avatar');
+    if (userAvatarElement) {
+        userAvatarElement.src = user.photoURL || 'assets/default-avatar.png';
+    }
+
+    // إظهار القائمة الرئيسية
+    const mainContent = document.getElementById('main-content');
+    if (mainContent) {
+        mainContent.style.display = 'block';
+    }
+
+    // إخفاء شاشة التحميل
+    const loadingScreen = document.getElementById('loading-screen');
+    if (loadingScreen) {
+        loadingScreen.style.display = 'none';
+    }
+}
+
+// تحميل البيانات الأولية
+async function loadInitialData() {
+    try {
+        // تحميل الفئات
+        await loadCategories();
+        
+        // تحميل الأدوات
+        await loadTools();
+        
+        // تحميل سجلات النشاط
+        await loadActivityLogs();
+    } catch (error) {
+        console.error('Error loading initial data:', error);
+        showNotification('حدث خطأ أثناء تحميل البيانات', 'error');
+    }
+}
+
+// تحميل سجلات النشاط
+async function loadActivityLogs() {
+    // TODO: تنفيذ تحميل سجلات النشاط
+}
+
+// بدء تحميل البيانات عند تحميل الصفحة
+document.addEventListener('DOMContentLoaded', loadInitialData); 

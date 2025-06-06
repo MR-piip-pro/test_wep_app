@@ -1,51 +1,79 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Helper function to check if user is admin
-    function isAdmin() {
-      return request.auth != null && 
-             exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
     }
 
-    // Helper function to check if this is the first admin setup
-    function isFirstAdminSetup() {
+    function isAdmin() {
+      return isAuthenticated() && 
+             exists(/databases/$(database)/documents/admins/$(request.auth.uid)) &&
+             !get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.disabled;
+    }
+
+    function isSuperAdmin() {
+      return isAdmin() && 
+             get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role == 'superadmin';
+    }
+
+    function isFirstSetup() {
       return !exists(/databases/$(database)/documents/system/config);
+    }
+
+    function isValidUser() {
+      return isAuthenticated() && 
+             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+             !get(/databases/$(database)/documents/users/$(request.auth.uid)).data.disabled;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
     }
 
     // System configuration
     match /system/config {
       allow read: if isAdmin();
-      allow create: if isFirstAdminSetup() && request.auth != null;
-      allow update, delete: if false;
+      allow create: if isFirstSetup() && isAuthenticated();
+      allow update: if isSuperAdmin();
+      allow delete: if false;
     }
 
-    // Categories collection rules
-    match /categories/{categoryId} {
-      allow read: if true; // Anyone can read categories
-      allow write: if isAdmin(); // Only admins can create/update/delete categories
+    // Users collection
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isFirstSetup() || isAdmin();
+      allow update: if isOwner(userId) || isAdmin();
+      allow delete: if isSuperAdmin();
     }
 
-    // Tools collection rules
-    match /tools/{toolId} {
-      allow read: if true; // Anyone can read tools
-      allow write: if isAdmin(); // Only admins can create/update/delete tools
-    }
-
-    // Admins collection rules
+    // Admins collection
     match /admins/{adminId} {
-      allow read: if request.auth != null && (request.auth.uid == adminId || isAdmin());
+      allow read: if isOwner(adminId) || isAdmin();
       allow create: if 
-        (isFirstAdminSetup() && request.auth != null && request.auth.uid == adminId) ||
-        (isAdmin() && request.auth.uid != adminId);
-      allow update: if isAdmin() && request.auth.uid != adminId;
-      allow delete: if isAdmin() && request.auth.uid != adminId;
+        (isFirstSetup() && isAuthenticated() && request.auth.uid == adminId) ||
+        (isSuperAdmin() && request.auth.uid != adminId);
+      allow update: if isSuperAdmin() && request.auth.uid != adminId;
+      allow delete: if isSuperAdmin() && request.auth.uid != adminId;
     }
 
-    // Activity logs collection rules
+    // Categories collection
+    match /categories/{categoryId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Tools collection
+    match /tools/{toolId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Activity logs collection
     match /activity_logs/{logId} {
       allow read: if isAdmin();
-      allow create: if isAdmin();
-      allow update, delete: if false; // Logs cannot be modified or deleted
+      allow create: if isValidUser();
+      allow update, delete: if false;
     }
 
     // Default deny
