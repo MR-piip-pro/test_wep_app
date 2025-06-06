@@ -347,21 +347,45 @@ async function addCategory(e) {
         const description = document.getElementById('category-description').value;
         const image = document.getElementById('category-image').files[0];
 
-        let imageUrl = '';
-        if (image) {
-            imageUrl = await uploadFile(image, `categories/${image.name}`);
+        // Validate inputs
+        if (!name || !description) {
+            showNotification('يرجى ملء جميع الحقول المطلوبة', 'error');
+            return;
         }
 
-        await addDoc(collection(db, 'categories'), {
+        let imageUrl = '';
+        if (image) {
+            try {
+                imageUrl = await uploadFile(image, `categories/${Date.now()}_${image.name}`);
+            } catch (uploadError) {
+                console.error('Error uploading image:', uploadError);
+                showNotification('حدث خطأ في رفع الصورة', 'error');
+                return;
+            }
+        }
+
+        // Add category to Firestore
+        const categoryData = {
             name,
             description,
             imageUrl,
-            createdAt: Timestamp.now()
-        });
+            createdAt: Timestamp.now(),
+            createdBy: auth.currentUser.uid
+        };
 
+        console.log('Adding category with data:', categoryData);
+        const docRef = await addDoc(collection(db, 'categories'), categoryData);
+        console.log('Category added successfully with ID:', docRef.id);
+
+        // Clear form and close modal
+        document.getElementById('add-category-form').reset();
         closeModal('add-category-modal');
-        loadCategories();
+        
+        // Refresh categories and show success message
+        await loadCategories();
         showNotification('تم إضافة الفئة بنجاح', 'success');
+        
+        // Log activity
         await logActivity('add_category', `تمت إضافة الفئة: ${name}`);
     } catch (error) {
         console.error('Error adding category:', error);
